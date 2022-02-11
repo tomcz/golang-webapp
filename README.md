@@ -1,6 +1,6 @@
 # golang-webapp
 
-This project provides a basic web application written in golang to make it easier to get something rolling without trying to figure out how to link all the bits together.
+This project provides a basic web application [skeleton](https://wiki.c2.com/?WalkingSkeleton) written in golang to make it easier to get something rolling without trying to figure out how to link all the bits together.
 
 Features:
 
