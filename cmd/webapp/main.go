@@ -42,11 +42,12 @@ func main() {
 	var group errgroup.Group
 	group.Go(func() error {
 		defer cancel()
-		ll.Info("starting server")
 		var err error
 		if *tlsCertFile != "" && *tlsKeyFile != "" {
+			ll.Info("starting server with TLS")
 			err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
 		} else {
+			ll.Info("starting server without TLS")
 			err = server.ListenAndServe()
 		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
