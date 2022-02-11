@@ -16,12 +16,12 @@ import (
 // content when we fail to evaluate a template
 var bufPool = bpool.NewBufferPool(48)
 
-func renderTemplate(w http.ResponseWriter, r *http.Request, data map[string]interface{}, templateNames ...string) {
+func render(w http.ResponseWriter, r *http.Request, data map[string]interface{}, templatePaths ...string) {
 	if !saveSession(w, r) {
 		return
 	}
-	ll := log.WithField("template", templateNames)
-	tmpl, err := newTemplate(templateNames)
+	ll := log.WithField("paths", templatePaths)
+	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
 		ll.WithError(err).Error("failed to create template")
 		http.Error(w, "failed to create template", http.StatusInternalServerError)
@@ -43,16 +43,16 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, data map[string]inte
 	}
 }
 
-func newTemplate(templateNames []string) (*template.Template, error) {
+func newTemplate(templatePaths []string) (*template.Template, error) {
 	tmpl := template.New("")
-	for _, p := range templateNames {
-		buf, err := readTemplate(p)
+	for _, path := range templatePaths {
+		buf, err := readTemplate(path)
 		if err != nil {
 			return nil, err
 		}
 		tmpl, err = tmpl.Parse(string(buf))
 		if err != nil {
-			return nil, fmt.Errorf("%s parse failed: %w", p, err)
+			return nil, fmt.Errorf("%s parse failed: %w", path, err)
 		}
 	}
 	return tmpl, nil

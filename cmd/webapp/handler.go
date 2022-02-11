@@ -30,7 +30,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Name": name,
 	}
-	renderTemplate(w, r, data, "layout.gohtml", "index.gohtml")
+	render(w, r, data, "layout.gohtml", "index.gohtml")
 }
 
 func updateIndex(w http.ResponseWriter, r *http.Request) {
