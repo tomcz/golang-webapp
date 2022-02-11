@@ -16,10 +16,14 @@ import (
 func main() {
 	env := flag.String("env", "dev", "Environment name")
 	addr := flag.String("addr", ":3000", "Listen address")
+	cookieAuth := flag.String("cookie-auth", "", "Cookie authentication key")
+	cookieEnc := flag.String("cookie-enc", "", "Cookie encryption key")
+	cookieName := flag.String("cookie-name", "example", "Cookie name")
 	flag.Parse()
 
-	h := withMiddleware(newHandler(), *env)
-	s := &http.Server{Addr: *addr, Handler: h}
+	session := newSessionStore(*cookieAuth, *cookieEnc, *cookieName)
+	handler := withMiddleware(newHandler(session), *env)
+	server := &http.Server{Addr: *addr, Handler: handler}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -28,7 +32,7 @@ func main() {
 	group.Go(func() error {
 		defer cancel()
 		log.WithField("addr", *addr).Info("starting server")
-		err := s.ListenAndServe()
+		err := server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
@@ -41,7 +45,7 @@ func main() {
 		select {
 		case <-signalChan:
 			log.Info("shutdown received")
-			return s.Shutdown(context.Background())
+			return server.Shutdown(context.Background())
 		case <-ctx.Done():
 			return nil
 		}

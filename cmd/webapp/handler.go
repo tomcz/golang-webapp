@@ -5,13 +5,15 @@ import (
 	"net/http"
 )
 
-func newHandler() http.Handler {
+func newHandler(s *sessionsStore) http.Handler {
 	r := http.NewServeMux()
-	r.HandleFunc("/index", index)
+	r.HandleFunc("/index", s.wrap(index))
 	r.Handle("/", http.RedirectHandler("/index", http.StatusFound))
 	return r
 }
 
-func index(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintln(w, "hello")
+func index(w http.ResponseWriter, r *http.Request) {
+	if saveSession(w, r) {
+		fmt.Fprintln(w, "hello")
+	}
 }
