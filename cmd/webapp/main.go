@@ -21,6 +21,8 @@ func main() {
 	cookieAuth := flag.String("cookie-auth", "", "Cookie authentication key")
 	cookieEnc := flag.String("cookie-enc", "", "Cookie encryption key")
 	cookieName := flag.String("cookie-name", "example", "Cookie name")
+	tlsCertFile := flag.String("tls-cert", "", "TLS certificate file")
+	tlsKeyFile := flag.String("tls-key", "", "TLS private key file")
 	flag.Parse()
 
 	isDev := *env == "dev"
@@ -41,7 +43,12 @@ func main() {
 	group.Go(func() error {
 		defer cancel()
 		ll.Info("starting server")
-		err := server.ListenAndServe()
+		var err error
+		if *tlsCertFile != "" && *tlsKeyFile != "" {
+			err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
+		} else {
+			err = server.ListenAndServe()
+		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
