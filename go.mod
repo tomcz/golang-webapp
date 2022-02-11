@@ -3,8 +3,10 @@ module github.com/tomcz/golang-webapp
 go 1.17
 
 require (
+	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.1
+	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/sirupsen/logrus v1.8.1
 	github.com/unrolled/secure v1.0.9
 	github.com/urfave/negroni v1.0.0

@@ -70,3 +70,9 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	http.Error(w, "failed to save session", http.StatusInternalServerError)
 	return false
 }
+
+func redirect(w http.ResponseWriter, r *http.Request, url string) {
+	if saveSession(w, r) {
+		http.Redirect(w, r, url, http.StatusFound)
+	}
+}

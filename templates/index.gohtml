@@ -1,0 +1,8 @@
+{{- define "body" }}
+<h1>Hello {{ .Name }}</h1>
+<form method="post">
+    <label for="name">Say hello to</label>
+    <input id="name" type="text" name="name" value="{{ .Name }}" autofocus>
+    <input type="submit">
+</form>
+{{- end }}
