@@ -4,10 +4,13 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+
+	"github.com/tomcz/golang-webapp/static"
 )
 
 func newHandler(s *sessionsStore) http.Handler {
 	r := mux.NewRouter()
+	r.PathPrefix("/static").Handler(http.StripPrefix("/static/", http.FileServer(static.FS)))
 	r.HandleFunc("/index", s.wrap(showIndex)).Methods("GET")
 	r.HandleFunc("/index", s.wrap(updateIndex)).Methods("POST")
 	r.Handle("/", http.RedirectHandler("/index", http.StatusFound))
@@ -15,7 +18,7 @@ func newHandler(s *sessionsStore) http.Handler {
 }
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
-	name := "Wibble"
+	name := ""
 	s := getSession(r)
 	if v, ok := s.Values["name"].(string); ok {
 		delete(s.Values, "name")
