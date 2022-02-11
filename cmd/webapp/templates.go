@@ -12,8 +12,9 @@ import (
 	"github.com/tomcz/golang-webapp/templates"
 )
 
-// use a buffer pool to prevent rendering partial
-// content when we fail to evaluate a template
+// use a buffer pool to avoid creating and freeing
+// buffers when we execute templates to avoid writing
+// incomplete or malformed data to the response
 var bufPool = bpool.NewBufferPool(48)
 
 func render(w http.ResponseWriter, r *http.Request, data map[string]interface{}, templatePaths ...string) {
