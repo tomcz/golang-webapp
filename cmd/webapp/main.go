@@ -11,6 +11,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/tomcz/golang-webapp/build"
 )
 
 func main() {
@@ -25,18 +27,24 @@ func main() {
 	handler := withMiddleware(newHandler(session), *env)
 	server := &http.Server{Addr: *addr, Handler: handler}
 
+	ll := log.WithFields(log.Fields{
+		"build": build.Version(),
+		"addr":  *addr,
+		"env":   *env,
+	})
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	var group errgroup.Group
 	group.Go(func() error {
 		defer cancel()
-		log.WithField("addr", *addr).Info("starting server")
+		ll.Info("starting server")
 		err := server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
-		log.Info("server stopped")
+		ll.Info("server stopped")
 		return nil
 	})
 	group.Go(func() error {
@@ -44,13 +52,13 @@ func main() {
 		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case <-signalChan:
-			log.Info("shutdown received")
+			ll.Info("shutdown received")
 			return server.Shutdown(context.Background())
 		case <-ctx.Done():
 			return nil
 		}
 	})
 	if err := group.Wait(); err != nil {
-		log.WithError(err).Fatalln("server failed")
+		ll.WithError(err).Fatalln("server failed")
 	}
 }
