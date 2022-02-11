@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/negroni"
 )
 
-func withMiddleware(h http.Handler, env string) http.Handler {
+func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	ll := log.WithField("component", "handler")
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
@@ -19,7 +19,7 @@ func withMiddleware(h http.Handler, env string) http.Handler {
 		ReferrerPolicy:       "no-referrer",
 		SSLRedirect:          true,
 		SSLTemporaryRedirect: true,
-		IsDevelopment:        env == "dev",
+		IsDevelopment:        isDev,
 	})
 	h = sm.Handler(h)
 	h = panicRecovery(h, ll)
@@ -57,5 +57,25 @@ func requestLogger(h http.Handler, ll log.FieldLogger) http.Handler {
 			"user_agent":  r.UserAgent(),
 		}
 		ll.WithFields(fields).Info("request finished")
+	})
+}
+
+func noStoreCacheControl(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func staticCacheControl(next http.Handler, isDev bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isDev {
+			// don't cache locally, so we can work on the content
+			w.Header().Set("Cache-Control", "no-cache")
+		} else {
+			// embedded content can be cached by the browser for 10 minutes
+			w.Header().Set("Cache-Control", "private, max-age=600")
+		}
+		next.ServeHTTP(w, r)
 	})
 }

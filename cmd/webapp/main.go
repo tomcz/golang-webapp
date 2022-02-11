@@ -23,8 +23,9 @@ func main() {
 	cookieName := flag.String("cookie-name", "example", "Cookie name")
 	flag.Parse()
 
+	isDev := *env == "dev"
 	session := newSessionStore(*cookieAuth, *cookieEnc, *cookieName)
-	handler := withMiddleware(newHandler(session), *env)
+	handler := withMiddleware(newHandler(session, isDev), isDev)
 	server := &http.Server{Addr: *addr, Handler: handler}
 
 	ll := log.WithFields(log.Fields{

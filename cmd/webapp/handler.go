@@ -8,12 +8,15 @@ import (
 	"github.com/tomcz/golang-webapp/static"
 )
 
-func newHandler(s *sessionsStore) http.Handler {
+func newHandler(s *sessionsStore, isDev bool) http.Handler {
+	staticAssets := http.StripPrefix("/static/", http.FileServer(static.FS))
+	staticAssets = staticCacheControl(staticAssets, isDev)
 	r := mux.NewRouter()
-	r.PathPrefix("/static").Handler(http.StripPrefix("/static/", http.FileServer(static.FS)))
+	r.PathPrefix("/static").Handler(staticAssets)
 	r.HandleFunc("/index", s.wrap(showIndex)).Methods("GET")
 	r.HandleFunc("/index", s.wrap(updateIndex)).Methods("POST")
 	r.Handle("/", http.RedirectHandler("/index", http.StatusFound))
+	r.Use(noStoreCacheControl)
 	return r
 }
 
