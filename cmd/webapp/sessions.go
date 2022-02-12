@@ -66,7 +66,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 		return true // saved properly
 	}
 	rlog(r).WithError(err).Error("failed to save session")
-	http.Error(w, rmsg(r, "failed to save session"), http.StatusInternalServerError)
+	render500(w, r, "failed to save session")
 	return false
 }
 

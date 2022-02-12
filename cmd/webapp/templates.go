@@ -15,6 +15,10 @@ import (
 // incomplete or malformed data to the response
 var bufPool = bpool.NewBufferPool(48)
 
+func render500(w http.ResponseWriter, r *http.Request, msg string) {
+	http.Error(w, rmsg(r, msg), http.StatusInternalServerError)
+}
+
 func render(w http.ResponseWriter, r *http.Request, data map[string]interface{}, templatePaths ...string) {
 	if !saveSession(w, r) {
 		return
@@ -23,7 +27,7 @@ func render(w http.ResponseWriter, r *http.Request, data map[string]interface{},
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
 		ll.WithError(err).Error("failed to create template")
-		http.Error(w, "failed to create template", http.StatusInternalServerError)
+		render500(w, r, "failed to create template")
 		return
 	}
 	buf := bufPool.Get()
@@ -31,7 +35,7 @@ func render(w http.ResponseWriter, r *http.Request, data map[string]interface{},
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
 		ll.WithError(err).Warn("failed to evaluate template")
-		http.Error(w, "failed to evaluate template", http.StatusInternalServerError)
+		render500(w, r, "failed to evaluate template")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
