@@ -7,18 +7,17 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
-	log "github.com/sirupsen/logrus"
 )
 
 const sessionKey = "session"
 
-type sessionsStore struct {
+type sessionStore struct {
 	store sessions.Store
 	name  string
 }
 
-func newSessionStore(authKey, encKey, sessionName string) *sessionsStore {
-	return &sessionsStore{
+func newSessionStore(authKey, encKey, sessionName string) *sessionStore {
+	return &sessionStore{
 		store: sessions.NewCookieStore(keyToBytes(authKey), keyToBytes(encKey)),
 		name:  sessionName,
 	}
@@ -40,7 +39,7 @@ func keyToBytes(key string) []byte {
 	return buf
 }
 
-func (s *sessionsStore) wrap(fn http.HandlerFunc) http.HandlerFunc {
+func (s *sessionStore) wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// We're ignoring the error resulted from decoding an existing session
 		// since Get() always returns a session, even if empty.
@@ -66,8 +65,8 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if err == nil {
 		return true // saved properly
 	}
-	log.WithError(err).Error("failed to save session")
-	http.Error(w, "failed to save session", http.StatusInternalServerError)
+	rlog(r).WithError(err).Error("failed to save session")
+	http.Error(w, rmsg(r, "failed to save session"), http.StatusInternalServerError)
 	return false
 }
 

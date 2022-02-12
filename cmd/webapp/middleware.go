@@ -11,7 +11,6 @@ import (
 )
 
 func withMiddleware(h http.Handler, isDev bool) http.Handler {
-	ll := log.WithField("component", "handler")
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
 		FrameDeny:            true,
@@ -22,29 +21,30 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 		IsDevelopment:        isDev,
 	})
 	h = sm.Handler(h)
-	h = panicRecovery(h, ll)
-	return requestLogger(h, ll)
+	h = panicRecovery(h)
+	h = requestLogger(h)
+	return traceRequest(h)
 }
 
-func panicRecovery(h http.Handler, ll log.FieldLogger) http.Handler {
+func panicRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if p := recover(); p != nil {
-				w.WriteHeader(http.StatusInternalServerError)
 				stack := string(debug.Stack())
-				ll.WithField("panic", p).WithField("panic_stack", stack).Error("recovered from panic")
+				rlog(r).WithField("panic", p).WithField("panic_stack", stack).Error("recovered from panic")
+				http.Error(w, rmsg(r, "request failed"), http.StatusInternalServerError)
 			}
 		}()
-		h.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }
 
-func requestLogger(h http.Handler, ll log.FieldLogger) http.Handler {
+func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		rw := negroni.NewResponseWriter(w)
-		h.ServeHTTP(rw, r)
+		next.ServeHTTP(rw, r)
 
 		fields := log.Fields{
 			"duration_ms": time.Since(start).Milliseconds(),
@@ -56,7 +56,7 @@ func requestLogger(h http.Handler, ll log.FieldLogger) http.Handler {
 			"referer":     r.Referer(),
 			"user_agent":  r.UserAgent(),
 		}
-		ll.WithFields(fields).Info("request finished")
+		rlog(r).WithFields(fields).Info("request finished")
 	})
 }
 

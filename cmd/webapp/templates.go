@@ -7,8 +7,6 @@ import (
 	"net/http"
 
 	"github.com/oxtoacart/bpool"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/tomcz/golang-webapp/templates"
 )
 
@@ -21,7 +19,7 @@ func render(w http.ResponseWriter, r *http.Request, data map[string]interface{},
 	if !saveSession(w, r) {
 		return
 	}
-	ll := log.WithField("paths", templatePaths)
+	ll := rlog(r).WithField("paths", templatePaths)
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
 		ll.WithError(err).Error("failed to create template")
@@ -32,7 +30,7 @@ func render(w http.ResponseWriter, r *http.Request, data map[string]interface{},
 	defer bufPool.Put(buf)
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
-		ll.WithError(err).Error("failed to evaluate template")
+		ll.WithError(err).Warn("failed to evaluate template")
 		http.Error(w, "failed to evaluate template", http.StatusInternalServerError)
 		return
 	}

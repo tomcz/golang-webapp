@@ -8,7 +8,7 @@ import (
 	"github.com/tomcz/golang-webapp/static"
 )
 
-func newHandler(s *sessionsStore, isDev bool) http.Handler {
+func newHandler(s *sessionStore, isDev bool) http.Handler {
 	staticAssets := http.StripPrefix("/static/", http.FileServer(static.FS))
 	staticAssets = staticCacheControl(staticAssets, isDev)
 	r := mux.NewRouter()
