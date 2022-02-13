@@ -27,9 +27,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		delete(s.Values, "name")
 		name = v
 	}
-	data := map[string]interface{}{
-		"Name": name,
-	}
+	data := renderData{"Name": name}
 	render(w, r, data, "layout.gohtml", "index.gohtml")
 }
 

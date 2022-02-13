@@ -16,7 +16,9 @@ import (
 // incomplete or malformed data to the response
 var bufPool = bpool.NewBufferPool(48)
 
-func render(w http.ResponseWriter, r *http.Request, data map[string]interface{}, templatePaths ...string) {
+type renderData map[string]interface{}
+
+func render(w http.ResponseWriter, r *http.Request, data renderData, templatePaths ...string) {
 	if !saveSession(w, r) {
 		return
 	}
