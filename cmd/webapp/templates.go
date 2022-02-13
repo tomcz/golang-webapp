@@ -22,10 +22,9 @@ func render(w http.ResponseWriter, r *http.Request, data renderData, templatePat
 	if !saveSession(w, r) {
 		return
 	}
-	ll := rlog(r).WithField("paths", templatePaths)
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
-		ll.WithError(err).Error("failed to create template")
+		radd(r, "template_new", err)
 		render500(w, r, "failed to create template")
 		return
 	}
@@ -33,15 +32,15 @@ func render(w http.ResponseWriter, r *http.Request, data renderData, templatePat
 	defer bufPool.Put(buf)
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
-		ll.WithError(err).Warn("failed to evaluate template")
-		render500(w, r, "failed to evaluate template")
+		radd(r, "template_exec", err)
+		render500(w, r, "failed to execute template")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		ll.WithError(err).Error("failed to write template")
+		radd(r, "template_write", err)
 	}
 }
 
