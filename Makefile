@@ -2,7 +2,7 @@ GITCOMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 LDFLAGS := -X github.com/tomcz/golang-webapp/build.commit=${GITCOMMIT}
 
 .PHONY: all
-all: clean build-prod
+all: clean format build-prod
 
 .PHONY: clean
 clean:
@@ -10,6 +10,10 @@ clean:
 
 target:
 	mkdir target
+
+.PHONY: format
+format:
+	goimports -w -local github.com/tomcz/golang-webapp .
 
 .PHONY: build-dev
 build-dev: target
