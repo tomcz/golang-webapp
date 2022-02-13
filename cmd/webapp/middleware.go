@@ -30,8 +30,9 @@ func panicRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if p := recover(); p != nil {
-				panicStack := string(debug.Stack())
-				rlog(r).WithField("panic", p).WithField("panic_stack", panicStack).Error("recovered from panic")
+				stack := string(debug.Stack())
+				fields := log.Fields{"panic": p, "panic_stack": stack}
+				rlog(r).WithFields(fields).Error("recovered from panic")
 				render500(w, r, "request failed")
 			}
 		}()
