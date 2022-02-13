@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
 )
@@ -29,6 +30,7 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	})
 	h = sm.Handler(h)
 	h = panicRecovery(h)
+	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
 	return requestLogger(h)
 }
 
@@ -54,6 +56,7 @@ func requestLogger(next http.Handler) http.Handler {
 		fields["method"] = r.Method
 		fields["path"] = r.URL.Path
 		fields["user_agent"] = r.UserAgent()
+		fields["remote_addr"] = r.RemoteAddr
 
 		if referer := r.Referer(); referer != "" {
 			fields["referer"] = referer
@@ -69,10 +72,10 @@ func panicRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if p := recover(); p != nil {
-				render500(w, r, "request failed")
 				stack := string(debug.Stack())
 				radd(r, "panic_stack", stack)
 				radd(r, "panic", p)
+				render500(w, r, "request failed")
 			}
 		}()
 		next.ServeHTTP(w, r)
