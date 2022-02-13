@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/oxtoacart/bpool"
+
 	"github.com/tomcz/golang-webapp/templates"
 )
 
@@ -14,10 +15,6 @@ import (
 // buffers when we execute templates to avoid writing
 // incomplete or malformed data to the response
 var bufPool = bpool.NewBufferPool(48)
-
-func render500(w http.ResponseWriter, r *http.Request, msg string) {
-	http.Error(w, rmsg(r, msg), http.StatusInternalServerError)
-}
 
 func render(w http.ResponseWriter, r *http.Request, data map[string]interface{}, templatePaths ...string) {
 	if !saveSession(w, r) {

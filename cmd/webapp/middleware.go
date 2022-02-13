@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"runtime/debug"
 	"time"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
 )
+
+const traceKey = "request_id"
 
 func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	sm := secure.New(secure.Options{
@@ -79,4 +83,29 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func traceRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), traceKey, uuid.New().String())
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func rlog(r *http.Request) log.FieldLogger {
+	if id, ok := r.Context().Value(traceKey).(string); ok {
+		return log.WithField(traceKey, id)
+	}
+	return log.New()
+}
+
+func rmsg(r *http.Request, msg string) string {
+	if id, ok := r.Context().Value(traceKey).(string); ok {
+		return id + ": " + msg
+	}
+	return msg
+}
+
+func render500(w http.ResponseWriter, r *http.Request, msg string) {
+	http.Error(w, rmsg(r, msg), http.StatusInternalServerError)
 }
