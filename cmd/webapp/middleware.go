@@ -18,7 +18,7 @@ const (
 	reqMdKey = "req_md"
 )
 
-func withMiddleware(h http.Handler, isDev bool) http.Handler {
+func withMiddleware(h http.Handler, logger log.FieldLogger, isDev bool) http.Handler {
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
 		FrameDeny:            true,
@@ -31,10 +31,10 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	h = sm.Handler(h)
 	h = panicRecovery(h)
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
-	return requestLogger(h)
+	return requestLogger(h, logger)
 }
 
-func requestLogger(next http.Handler) http.Handler {
+func requestLogger(next http.Handler, logger log.FieldLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		fields := log.Fields{}
@@ -50,6 +50,7 @@ func requestLogger(next http.Handler) http.Handler {
 		fields["req_id"] = reqID
 		fields["start_at"] = start
 		fields["duration_ms"] = duration.Milliseconds()
+		fields["duration_ns"] = duration.Nanoseconds()
 		fields["status"] = rw.Status()
 		fields["size"] = rw.Size()
 		fields["hostname"] = r.Host
@@ -61,10 +62,10 @@ func requestLogger(next http.Handler) http.Handler {
 		if referer := r.Referer(); referer != "" {
 			fields["referer"] = referer
 		}
-		if location := rw.Header().Get("Location"); location != "" {
-			fields["location"] = location
+		if loc := rw.Header().Get("Location"); loc != "" {
+			fields["location"] = loc
 		}
-		log.WithFields(fields).Info("request finished")
+		logger.WithFields(fields).Info("request finished")
 	})
 }
 
@@ -73,8 +74,8 @@ func panicRecovery(next http.Handler) http.Handler {
 		defer func() {
 			if p := recover(); p != nil {
 				stack := string(debug.Stack())
-				radd(r, "panic_stack", stack)
-				radd(r, "panic", p)
+				rlog(r, "panic_stack", stack)
+				rlog(r, "panic", p)
 				render500(w, r, "request failed")
 			}
 		}()
@@ -102,7 +103,7 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 	})
 }
 
-func radd(r *http.Request, key string, value interface{}) {
+func rlog(r *http.Request, key string, value interface{}) {
 	if md, ok := r.Context().Value(reqMdKey).(log.Fields); ok {
 		md[key] = value
 	}

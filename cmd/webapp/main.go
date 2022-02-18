@@ -25,16 +25,15 @@ func main() {
 	tlsKeyFile := flag.String("tls-key", "", "TLS private key file")
 	flag.Parse()
 
-	isDev := *env == "dev"
-	session := newSessionStore(*cookieAuth, *cookieEnc, *cookieName)
-	handler := withMiddleware(newHandler(session, isDev), isDev)
-	server := &http.Server{Addr: *addr, Handler: handler}
-
-	ll := log.WithFields(log.Fields{
+	logger := log.WithFields(log.Fields{
 		"build": build.Version(),
-		"addr":  *addr,
 		"env":   *env,
 	})
+
+	isDev := *env == "dev"
+	session := newSessionStore(*cookieAuth, *cookieEnc, *cookieName)
+	handler := withMiddleware(newHandler(session, isDev), logger, isDev)
+	server := &http.Server{Addr: *addr, Handler: handler}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -43,6 +42,7 @@ func main() {
 	group.Go(func() error {
 		defer cancel()
 		var err error
+		ll := logger.WithField("addr", *addr)
 		if *tlsCertFile != "" && *tlsKeyFile != "" {
 			ll.Info("starting server with TLS")
 			err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
@@ -61,13 +61,13 @@ func main() {
 		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case <-signalChan:
-			ll.Info("shutdown received")
+			logger.Info("shutdown received")
 			return server.Shutdown(context.Background())
 		case <-ctx.Done():
 			return nil
 		}
 	})
 	if err := group.Wait(); err != nil {
-		ll.WithError(err).Fatalln("server failed")
+		logger.WithError(err).Fatalln("server failed")
 	}
 }

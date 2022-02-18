@@ -56,6 +56,14 @@ func getSession(r *http.Request) *sessions.Session {
 	return nil
 }
 
+func currentSession(r *http.Request) *sessions.Session {
+	s := getSession(r)
+	if s == nil {
+		panic("no current session; is this handler wrapped?")
+	}
+	return s
+}
+
 func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	s := getSession(r)
 	if s == nil {
@@ -65,7 +73,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if err == nil {
 		return true // saved properly
 	}
-	radd(r, "session_save", err)
+	rlog(r, "session_save", err)
 	render500(w, r, "failed to save session")
 	return false
 }

@@ -22,7 +22,7 @@ func newHandler(s *sessionStore, isDev bool) http.Handler {
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
 	name := ""
-	s := getSession(r)
+	s := currentSession(r)
 	if v, ok := s.Values["name"].(string); ok {
 		delete(s.Values, "name")
 		name = v
@@ -34,7 +34,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 func updateIndex(w http.ResponseWriter, r *http.Request) {
 	name := r.PostFormValue("name")
 	if name != "" {
-		s := getSession(r)
+		s := currentSession(r)
 		s.Values["name"] = name
 	}
 	redirect(w, r, "/index")
