@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -15,27 +16,51 @@ func newHandler(s *sessionStore, isDev bool) http.Handler {
 	r.PathPrefix("/static").Handler(staticAssets)
 	r.HandleFunc("/index", s.wrap(showIndex)).Methods("GET")
 	r.HandleFunc("/index", s.wrap(updateIndex)).Methods("POST")
+	r.HandleFunc("/error", exampleError).Methods("GET")
+	r.HandleFunc("/panic", examplePanic).Methods("GET")
 	r.Handle("/", http.RedirectHandler("/index", http.StatusFound))
 	r.Use(noStoreCacheControl)
 	return r
 }
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
+	span, r := newSpan(r, "showIndex")
+	defer span.End()
+
 	name := ""
 	s := currentSession(r)
 	if v, ok := s.Values["name"].(string); ok {
 		delete(s.Values, "name")
 		name = v
 	}
+
 	data := renderData{"Name": name}
 	render(w, r, data, "layout.gohtml", "index.gohtml")
 }
 
 func updateIndex(w http.ResponseWriter, r *http.Request) {
+	span, r := newSpan(r, "updateIndex")
+	defer span.End()
+
 	name := r.PostFormValue("name")
 	if name != "" {
 		s := currentSession(r)
 		s.Values["name"] = name
 	}
+
 	redirect(w, r, "/index")
+}
+
+func exampleError(w http.ResponseWriter, r *http.Request) {
+	span, r := newSpan(r, "exampleError")
+	defer span.End()
+
+	renderError(w, span, errors.New("example"), "example error")
+}
+
+func examplePanic(_ http.ResponseWriter, r *http.Request) {
+	span, r := newSpan(r, "examplePanic")
+	defer span.End()
+
+	panic("example panic")
 }

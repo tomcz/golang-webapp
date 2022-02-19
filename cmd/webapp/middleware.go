@@ -1,24 +1,21 @@
 package main
 
 import (
-	"context"
+	"encoding/hex"
+	"fmt"
 	"net/http"
-	"runtime/debug"
-	"time"
 
-	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
+	"github.com/gorilla/securecookie"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
-const (
-	reqIdKey = "req_id"
-	reqMdKey = "req_md"
-)
-
-func withMiddleware(h http.Handler, logger log.FieldLogger, isDev bool) http.Handler {
+func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
 		FrameDeny:            true,
@@ -31,41 +28,36 @@ func withMiddleware(h http.Handler, logger log.FieldLogger, isDev bool) http.Han
 	h = sm.Handler(h)
 	h = panicRecovery(h)
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
-	return requestLogger(h, logger)
+	return requestLogger(h)
 }
 
-func requestLogger(next http.Handler, logger log.FieldLogger) http.Handler {
+func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		fields := log.Fields{}
-		reqID := uuid.New().String()
+		span, r := newSpan(r, "http_request")
+		defer span.End()
 
 		rw := negroni.NewResponseWriter(w)
-		ctx := context.WithValue(r.Context(), reqIdKey, reqID)
-		ctx = context.WithValue(ctx, reqMdKey, fields)
+		next.ServeHTTP(rw, r)
 
-		next.ServeHTTP(rw, r.WithContext(ctx))
-		duration := time.Since(start)
-
-		fields["req_id"] = reqID
-		fields["start_at"] = start
-		fields["duration_ms"] = duration.Milliseconds()
-		fields["duration_ns"] = duration.Nanoseconds()
-		fields["status"] = rw.Status()
-		fields["size"] = rw.Size()
-		fields["hostname"] = r.Host
-		fields["method"] = r.Method
-		fields["path"] = r.URL.Path
-		fields["user_agent"] = r.UserAgent()
-		fields["remote_addr"] = r.RemoteAddr
-
+		statusCode := rw.Status()
+		span.SetAttributes(
+			attribute.Int("res_status", statusCode),
+			attribute.Int("res_size", rw.Size()),
+			attribute.String("req_hostname", r.Host),
+			attribute.String("req_method", r.Method),
+			attribute.String("req_path", r.URL.Path),
+			attribute.String("req_user_agent", r.UserAgent()),
+			attribute.String("req_remote_addr", r.RemoteAddr),
+		)
 		if referer := r.Referer(); referer != "" {
-			fields["referer"] = referer
+			span.SetAttributes(attribute.String("req_referer", referer))
 		}
 		if loc := rw.Header().Get("Location"); loc != "" {
-			fields["location"] = loc
+			span.SetAttributes(attribute.String("res_location", loc))
 		}
-		logger.WithFields(fields).Info("request finished")
+		if statusCode >= 400 {
+			span.SetStatus(codes.Error, http.StatusText(statusCode))
+		}
 	})
 }
 
@@ -73,10 +65,21 @@ func panicRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if p := recover(); p != nil {
-				stack := string(debug.Stack())
-				rlog(r, "panic_stack", stack)
-				rlog(r, "panic", p)
-				render500(w, r, "request failed")
+				var err error
+				if e, ok := p.(error); ok {
+					err = e
+				} else {
+					err = fmt.Errorf("%v", p)
+				}
+				errID := errorID()
+				span := trace.SpanFromContext(r.Context())
+				span.RecordError(err,
+					trace.WithStackTrace(true),
+					trace.WithAttributes(attribute.String("error_id", errID)),
+					trace.WithAttributes(attribute.String("error_type", "panic")),
+				)
+				msg := fmt.Sprintf("[%s] request failed", errID)
+				http.Error(w, msg, http.StatusInternalServerError)
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -103,19 +106,25 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 	})
 }
 
-func rlog(r *http.Request, key string, value interface{}) {
-	if md, ok := r.Context().Value(reqMdKey).(log.Fields); ok {
-		md[key] = value
-	}
+func newSpan(r *http.Request, name string) (trace.Span, *http.Request) {
+	ctx, span := otel.Tracer("handler").Start(r.Context(), name)
+	span.SetStatus(codes.Ok, "") // better than unset
+	return span, r.WithContext(ctx)
 }
 
-func rmsg(r *http.Request, msg string) string {
-	if id, ok := r.Context().Value(reqIdKey).(string); ok {
-		return id + ": " + msg
-	}
-	return msg
+func renderError(w http.ResponseWriter, span trace.Span, err error, msg string) {
+	errID := recordError(span, err, msg)
+	message := fmt.Sprintf("[%s] %s", errID, msg)
+	http.Error(w, message, http.StatusInternalServerError)
 }
 
-func render500(w http.ResponseWriter, r *http.Request, msg string) {
-	http.Error(w, rmsg(r, msg), http.StatusInternalServerError)
+func recordError(span trace.Span, err error, msg string) string {
+	errID := errorID()
+	span.SetStatus(codes.Error, msg)
+	span.RecordError(err, trace.WithAttributes(attribute.String("error_id", errID)))
+	return errID
+}
+
+func errorID() string {
+	return hex.EncodeToString(securecookie.GenerateRandomKey(4))
 }

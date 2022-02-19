@@ -4,12 +4,19 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/build"
@@ -23,16 +30,30 @@ func main() {
 	cookieName := flag.String("cookie-name", "example", "Cookie name")
 	tlsCertFile := flag.String("tls-cert", "", "TLS certificate file")
 	tlsKeyFile := flag.String("tls-key", "", "TLS private key file")
+	traceFile := flag.String("trace-out", "target/traces.jsonl", "trace output file")
 	flag.Parse()
 
-	logger := log.WithFields(log.Fields{
-		"build": build.Version(),
-		"env":   *env,
-	})
+	fp, err := os.Create(*traceFile)
+	if err != nil {
+		log.Fatalf("failed to create %s - error is %v\n", *traceFile, err)
+	}
+	log.Println("writing otel traces to", *traceFile)
+
+	te, err := newExporter(fp)
+	if err != nil {
+		fp.Close()
+		log.Fatalln("exporter failed - error is:", err)
+	}
+	tp := trace.NewTracerProvider(
+		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithResource(newResource(*env)),
+		trace.WithBatcher(te),
+	)
+	otel.SetTracerProvider(tp)
 
 	isDev := *env == "dev"
 	session := newSessionStore(*cookieAuth, *cookieEnc, *cookieName)
-	handler := withMiddleware(newHandler(session, isDev), logger, isDev)
+	handler := withMiddleware(newHandler(session, isDev), isDev)
 	server := &http.Server{Addr: *addr, Handler: handler}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -42,32 +63,55 @@ func main() {
 	group.Go(func() error {
 		defer cancel()
 		var err error
-		ll := logger.WithField("addr", *addr)
 		if *tlsCertFile != "" && *tlsKeyFile != "" {
-			ll.Info("starting server with TLS")
+			log.Println("starting server with TLS on", *addr)
 			err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
 		} else {
-			ll.Info("starting server without TLS")
+			log.Println("starting server without TLS on", *addr)
 			err = server.ListenAndServe()
 		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
-		ll.Info("server stopped")
+		log.Println("server stopped")
 		return nil
 	})
 	group.Go(func() error {
+		defer func() {
+			tp.Shutdown(context.Background())
+			fp.Close()
+		}()
 		signalChan := make(chan os.Signal, 1)
 		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case <-signalChan:
-			logger.Info("shutdown received")
+			log.Println("shutdown received")
 			return server.Shutdown(context.Background())
 		case <-ctx.Done():
 			return nil
 		}
 	})
-	if err := group.Wait(); err != nil {
-		logger.WithError(err).Fatalln("server failed")
+	if err = group.Wait(); err != nil {
+		log.Fatalln("app failed with:", err)
 	}
+}
+
+func newExporter(w io.Writer) (trace.SpanExporter, error) {
+	return stdouttrace.New(
+		stdouttrace.WithWriter(w),
+		stdouttrace.WithPrettyPrint(),
+	)
+}
+
+func newResource(env string) *resource.Resource {
+	r, _ := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("golang-webapp"),
+			semconv.ServiceVersionKey.String(build.Version()),
+			attribute.String("environment", env),
+		),
+	)
+	return r
 }

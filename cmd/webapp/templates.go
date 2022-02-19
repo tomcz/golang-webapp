@@ -22,25 +22,26 @@ func render(w http.ResponseWriter, r *http.Request, data renderData, templatePat
 	if !saveSession(w, r) {
 		return
 	}
+	span, r := newSpan(r, "render")
+	defer span.End()
+
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
-		rlog(r, "template_new", err)
-		render500(w, r, "failed to create template")
+		renderError(w, span, err, "failed to create template")
 		return
 	}
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
-		rlog(r, "template_exec", err)
-		render500(w, r, "failed to execute template")
+		renderError(w, span, err, "failed to execute template")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		rlog(r, "template_write", err)
+		recordError(span, err, "failed to write template")
 	}
 }
 
