@@ -35,7 +35,7 @@ func main() {
 
 	fp, err := os.Create(*traceFile)
 	if err != nil {
-		log.Fatalf("failed to create %s - error is %v\n", *traceFile, err)
+		log.Fatalf("failed to create %s - error is: %v\n", *traceFile, err)
 	}
 	log.Println("writing otel traces to", *traceFile)
 
@@ -92,7 +92,7 @@ func main() {
 		}
 	})
 	if err = group.Wait(); err != nil {
-		log.Fatalln("app failed with:", err)
+		log.Fatalln("app failed - error is:", err)
 	}
 }
 
