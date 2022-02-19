@@ -2,6 +2,8 @@
 
 This project provides a basic web application [skeleton](https://wiki.c2.com/?WalkingSkeleton) written in golang, to make it easier to get something rolling without trying to figure out how to link all the bits together.
 
+Note: If you intend to use [OpenTelemetry](https://opentelemetry.io/) in your application then please use this skeleton's [otel branch](https://github.com/tomcz/golang-webapp/tree/otel).
+
 Features:
 
 * Cookie-based HTTP sessions.
