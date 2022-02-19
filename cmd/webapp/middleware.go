@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/securecookie"
 	"github.com/streadway/handy/breaker"
@@ -33,7 +34,7 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, span := otel.Tracer("").Start(r.Context(), "requestLogger")
+		ctx, span := otel.Tracer("").Start(r.Context(), "http_request")
 		defer span.End()
 
 		rw := negroni.NewResponseWriter(w)
@@ -125,5 +126,6 @@ func recordError(r *http.Request, err error, msg string) string {
 }
 
 func errorID() string {
-	return hex.EncodeToString(securecookie.GenerateRandomKey(4))
+	// unique-enough, short, and unambigious, error reference for users to notify us
+	return strings.ToUpper(hex.EncodeToString(securecookie.GenerateRandomKey(4)))
 }
