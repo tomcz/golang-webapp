@@ -43,9 +43,9 @@ func requestLogger(next http.Handler) http.Handler {
 		span.SetAttributes(
 			attribute.Int("res_status", statusCode),
 			attribute.Int("res_size", rw.Size()),
-			attribute.String("req_hostname", r.Host),
+			attribute.String("req_host", r.Host),
 			attribute.String("req_method", r.Method),
-			attribute.String("req_path", r.URL.Path),
+			attribute.String("req_url_path", r.URL.Path),
 			attribute.String("req_user_agent", r.UserAgent()),
 			attribute.String("req_remote_addr", r.RemoteAddr),
 		)
@@ -55,7 +55,9 @@ func requestLogger(next http.Handler) http.Handler {
 		if loc := rw.Header().Get("Location"); loc != "" {
 			span.SetAttributes(attribute.String("res_location", loc))
 		}
-		if statusCode >= 400 {
+		if statusCode < 400 {
+			span.SetStatus(codes.Ok, http.StatusText(statusCode))
+		} else {
 			span.SetStatus(codes.Error, http.StatusText(statusCode))
 		}
 	})
@@ -75,8 +77,8 @@ func panicRecovery(next http.Handler) http.Handler {
 				span := trace.SpanFromContext(r.Context())
 				span.RecordError(err,
 					trace.WithStackTrace(true),
-					trace.WithAttributes(attribute.String("error_id", errID)),
-					trace.WithAttributes(attribute.String("error_type", "panic")),
+					trace.WithAttributes(attribute.String("err_id", errID)),
+					trace.WithAttributes(attribute.String("err_msg", "recovered from panic")),
 				)
 				msg := fmt.Sprintf("[%s] request failed", errID)
 				http.Error(w, msg, http.StatusInternalServerError)
@@ -108,20 +110,22 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 
 func newSpan(r *http.Request, name string) (trace.Span, *http.Request) {
 	ctx, span := otel.Tracer("handler").Start(r.Context(), name)
-	span.SetStatus(codes.Ok, "") // better than unset
 	return span, r.WithContext(ctx)
 }
 
-func renderError(w http.ResponseWriter, span trace.Span, err error, msg string) {
-	errID := recordError(span, err, msg)
+func renderError(w http.ResponseWriter, r *http.Request, err error, msg string) {
+	errID := recordError(r, err, msg)
 	message := fmt.Sprintf("[%s] %s", errID, msg)
 	http.Error(w, message, http.StatusInternalServerError)
 }
 
-func recordError(span trace.Span, err error, msg string) string {
+func recordError(r *http.Request, err error, msg string) string {
 	errID := errorID()
-	span.SetStatus(codes.Error, msg)
-	span.RecordError(err, trace.WithAttributes(attribute.String("error_id", errID)))
+	span := trace.SpanFromContext(r.Context())
+	span.RecordError(err,
+		trace.WithAttributes(attribute.String("err_id", errID)),
+		trace.WithAttributes(attribute.String("err_msg", msg)),
+	)
 	return errID
 }
 

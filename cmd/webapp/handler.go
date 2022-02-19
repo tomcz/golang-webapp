@@ -39,9 +39,6 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateIndex(w http.ResponseWriter, r *http.Request) {
-	span, r := newSpan(r, "updateIndex")
-	defer span.End()
-
 	name := r.PostFormValue("name")
 	if name != "" {
 		s := currentSession(r)
@@ -52,15 +49,9 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func exampleError(w http.ResponseWriter, r *http.Request) {
-	span, r := newSpan(r, "exampleError")
-	defer span.End()
-
-	renderError(w, span, errors.New("example"), "example error")
+	renderError(w, r, errors.New("wibble"), "example error")
 }
 
-func examplePanic(_ http.ResponseWriter, r *http.Request) {
-	span, r := newSpan(r, "examplePanic")
-	defer span.End()
-
-	panic("example panic")
+func examplePanic(http.ResponseWriter, *http.Request) {
+	panic("wobble")
 }

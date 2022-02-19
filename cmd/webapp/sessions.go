@@ -65,9 +65,6 @@ func currentSession(r *http.Request) *sessions.Session {
 }
 
 func saveSession(w http.ResponseWriter, r *http.Request) bool {
-	span, r := newSpan(r, "saveSession")
-	defer span.End()
-
 	s := getSession(r)
 	if s == nil {
 		return true // no session to save
@@ -76,7 +73,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if err == nil {
 		return true // saved properly
 	}
-	renderError(w, span, err, "failed to save session")
+	renderError(w, r, err, "failed to save session")
 	return false
 }
 
