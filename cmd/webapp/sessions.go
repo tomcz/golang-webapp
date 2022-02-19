@@ -7,6 +7,8 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const sessionKey = "session"
@@ -79,6 +81,8 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 
 func redirect(w http.ResponseWriter, r *http.Request, url string) {
 	if saveSession(w, r) {
+		span := trace.SpanFromContext(r.Context())
+		span.SetAttributes(attribute.String("http.redirect", url))
 		http.Redirect(w, r, url, http.StatusFound)
 	}
 }

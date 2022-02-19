@@ -9,10 +9,8 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
-	"github.com/urfave/negroni"
-	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -29,39 +27,7 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	h = sm.Handler(h)
 	h = panicRecovery(h)
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
-	return requestLogger(h)
-}
-
-func requestLogger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, span := otel.Tracer("").Start(r.Context(), "http_request")
-		defer span.End()
-
-		rw := negroni.NewResponseWriter(w)
-		next.ServeHTTP(rw, r.WithContext(ctx))
-
-		statusCode := rw.Status()
-		span.SetAttributes(
-			attribute.Int("res_status", statusCode),
-			attribute.Int("res_size", rw.Size()),
-			attribute.String("req_host", r.Host),
-			attribute.String("req_method", r.Method),
-			attribute.String("req_url_path", r.URL.Path),
-			attribute.String("req_user_agent", r.UserAgent()),
-			attribute.String("req_remote_addr", r.RemoteAddr),
-		)
-		if referer := r.Referer(); referer != "" {
-			span.SetAttributes(attribute.String("req_referer", referer))
-		}
-		if loc := rw.Header().Get("Location"); loc != "" {
-			span.SetAttributes(attribute.String("res_location", loc))
-		}
-		if statusCode < 400 {
-			span.SetStatus(codes.Ok, http.StatusText(statusCode))
-		} else {
-			span.SetStatus(codes.Error, http.StatusText(statusCode))
-		}
-	})
+	return otelhttp.NewHandler(h, "handler")
 }
 
 func panicRecovery(next http.Handler) http.Handler {
