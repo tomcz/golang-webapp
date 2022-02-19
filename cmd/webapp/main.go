@@ -99,7 +99,6 @@ func main() {
 func newExporter(w io.Writer) (trace.SpanExporter, error) {
 	return stdouttrace.New(
 		stdouttrace.WithWriter(w),
-		stdouttrace.WithPrettyPrint(),
 	)
 }
 
