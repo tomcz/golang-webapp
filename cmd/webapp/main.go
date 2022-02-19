@@ -39,16 +39,11 @@ func main() {
 	}
 	log.Println("writing otel traces to", *traceFile)
 
-	te, err := newExporter(fp)
+	tp, err := newTraceProvider(fp, *env)
 	if err != nil {
-		fp.Close()
-		log.Fatalln("exporter failed - error is:", err)
+		fp.Close() // fatal logs bork defer
+		log.Fatalln("failed to create trace provider - error is:", err)
 	}
-	tp := trace.NewTracerProvider(
-		trace.WithSampler(trace.AlwaysSample()),
-		trace.WithResource(newResource(*env)),
-		trace.WithBatcher(te),
-	)
 	otel.SetTracerProvider(tp)
 
 	isDev := *env == "dev"
@@ -96,14 +91,12 @@ func main() {
 	}
 }
 
-func newExporter(w io.Writer) (trace.SpanExporter, error) {
-	return stdouttrace.New(
-		stdouttrace.WithWriter(w),
-	)
-}
-
-func newResource(env string) *resource.Resource {
-	r, _ := resource.Merge(
+func newTraceProvider(w io.Writer, env string) (*trace.TracerProvider, error) {
+	tw, err := stdouttrace.New(stdouttrace.WithWriter(w))
+	if err != nil {
+		return nil, err
+	}
+	tr, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
@@ -112,5 +105,12 @@ func newResource(env string) *resource.Resource {
 			attribute.String("environment", env),
 		),
 	)
-	return r
+	if err != nil {
+		return nil, err
+	}
+	return trace.NewTracerProvider(
+		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithResource(tr),
+		trace.WithBatcher(tw),
+	), nil
 }
