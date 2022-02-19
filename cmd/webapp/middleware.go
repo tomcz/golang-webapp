@@ -2,11 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/securecookie"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
@@ -48,22 +53,22 @@ func requestLogger(next http.Handler, logger log.FieldLogger) http.Handler {
 		duration := time.Since(start)
 
 		fields["req_id"] = reqID
-		fields["start_at"] = start
-		fields["duration_ms"] = duration.Milliseconds()
-		fields["duration_ns"] = duration.Nanoseconds()
-		fields["status"] = rw.Status()
-		fields["size"] = rw.Size()
-		fields["hostname"] = r.Host
-		fields["method"] = r.Method
-		fields["path"] = r.URL.Path
-		fields["user_agent"] = r.UserAgent()
-		fields["remote_addr"] = r.RemoteAddr
+		fields["req_start_at"] = start
+		fields["res_duration_ms"] = duration.Milliseconds()
+		fields["res_duration_ns"] = duration.Nanoseconds()
+		fields["res_status"] = rw.Status()
+		fields["res_size"] = rw.Size()
+		fields["req_host"] = r.Host
+		fields["req_method"] = r.Method
+		fields["req_path"] = r.URL.Path
+		fields["req_user_agent"] = r.UserAgent()
+		fields["req_remote_addr"] = r.RemoteAddr
 
 		if referer := r.Referer(); referer != "" {
 			fields["referer"] = referer
 		}
 		if loc := rw.Header().Get("Location"); loc != "" {
-			fields["location"] = loc
+			fields["res_location"] = loc
 		}
 		logger.WithFields(fields).Info("request finished")
 	})
@@ -103,19 +108,31 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 	})
 }
 
+func setRouteName(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if route := mux.CurrentRoute(r); route != nil {
+			if name := route.GetName(); name != "" {
+				rlog(r, "req_route", name)
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func rlog(r *http.Request, key string, value interface{}) {
 	if md, ok := r.Context().Value(reqMdKey).(log.Fields); ok {
 		md[key] = value
 	}
 }
 
-func rmsg(r *http.Request, msg string) string {
-	if id, ok := r.Context().Value(reqIdKey).(string); ok {
-		return id + ": " + msg
-	}
-	return msg
+func render500(w http.ResponseWriter, r *http.Request, msg string) {
+	errID := errorID()
+	rlog(r, "err_id", errID)
+	message := fmt.Sprintf("[%s] %s", errID, msg)
+	http.Error(w, message, http.StatusInternalServerError)
 }
 
-func render500(w http.ResponseWriter, r *http.Request, msg string) {
-	http.Error(w, rmsg(r, msg), http.StatusInternalServerError)
+func errorID() string {
+	// unique-enough, short, and unambigious, error reference for users to notify us
+	return strings.ToUpper(hex.EncodeToString(securecookie.GenerateRandomKey(4)))
 }
