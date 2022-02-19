@@ -24,9 +24,6 @@ func newHandler(s *sessionStore, isDev bool) http.Handler {
 }
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
-	span, r := newSpan(r, "showIndex")
-	defer span.End()
-
 	name := ""
 	s := currentSession(r)
 	if v, ok := s.Values["name"].(string); ok {

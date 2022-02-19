@@ -33,11 +33,11 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		span, r := newSpan(r, "http_request")
+		ctx, span := otel.Tracer("").Start(r.Context(), "requestLogger")
 		defer span.End()
 
 		rw := negroni.NewResponseWriter(w)
-		next.ServeHTTP(rw, r)
+		next.ServeHTTP(rw, r.WithContext(ctx))
 
 		statusCode := rw.Status()
 		span.SetAttributes(
@@ -106,11 +106,6 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-func newSpan(r *http.Request, name string) (trace.Span, *http.Request) {
-	ctx, span := otel.Tracer("handler").Start(r.Context(), name)
-	return span, r.WithContext(ctx)
 }
 
 func renderError(w http.ResponseWriter, r *http.Request, err error, msg string) {
