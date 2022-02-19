@@ -42,7 +42,7 @@ func panicRecovery(next http.Handler) http.Handler {
 				} else {
 					err = fmt.Errorf("%v", p)
 				}
-				errID := errorID()
+				errID := newErrorID()
 				span := trace.SpanFromContext(r.Context())
 				span.RecordError(err,
 					trace.WithStackTrace(true),
@@ -96,7 +96,7 @@ func renderError(w http.ResponseWriter, r *http.Request, err error, msg string) 
 }
 
 func recordError(r *http.Request, err error, msg string) string {
-	errID := errorID()
+	errID := newErrorID()
 	span := trace.SpanFromContext(r.Context())
 	span.RecordError(err,
 		trace.WithAttributes(attribute.String("err_id", errID)),
@@ -105,7 +105,7 @@ func recordError(r *http.Request, err error, msg string) string {
 	return errID
 }
 
-func errorID() string {
+func newErrorID() string {
 	// unique-enough, short, and unambigious, error reference for users to notify us
 	return strings.ToUpper(hex.EncodeToString(securecookie.GenerateRandomKey(4)))
 }
