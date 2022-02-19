@@ -126,13 +126,13 @@ func rlog(r *http.Request, key string, value interface{}) {
 }
 
 func render500(w http.ResponseWriter, r *http.Request, msg string) {
-	errID := errorID()
+	errID := newErrorID()
 	rlog(r, "err_id", errID)
 	message := fmt.Sprintf("[%s] %s", errID, msg)
 	http.Error(w, message, http.StatusInternalServerError)
 }
 
-func errorID() string {
+func newErrorID() string {
 	// unique-enough, short, and unambigious, error reference for users to notify us
 	return strings.ToUpper(hex.EncodeToString(securecookie.GenerateRandomKey(4)))
 }
