@@ -30,7 +30,6 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		delete(s.Values, "name")
 		name = v
 	}
-
 	data := renderData{"Name": name}
 	render(w, r, data, "layout.gohtml", "index.gohtml")
 }
@@ -41,7 +40,6 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 		s := currentSession(r)
 		s.Values["name"] = name
 	}
-
 	redirect(w, r, "/index")
 }
 
