@@ -94,8 +94,9 @@ func main() {
 		}
 	})
 	if err = group.Wait(); err != nil {
-		log.Fatalln("app failed - error is:", err)
+		log.Fatalln("application failed - error is:", err)
 	}
+	log.Println("application stopped")
 }
 
 func newTraceProvider(w io.Writer, env string) (*trace.TracerProvider, error) {

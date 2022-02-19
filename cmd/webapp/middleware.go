@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -70,6 +72,18 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 		} else {
 			// embedded content can be cached by the browser for 10 minutes
 			w.Header().Set("Cache-Control", "private, max-age=600")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func setRouteTagName(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if route := mux.CurrentRoute(r); route != nil {
+			if name := route.GetName(); name != "" {
+				span := trace.SpanFromContext(r.Context())
+				span.SetAttributes(semconv.HTTPRouteKey.String(name))
+			}
 		}
 		next.ServeHTTP(w, r)
 	})

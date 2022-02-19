@@ -13,13 +13,13 @@ func newHandler(s *sessionStore, isDev bool) http.Handler {
 	staticAssets := http.StripPrefix("/static/", http.FileServer(static.FS))
 	staticAssets = staticCacheControl(staticAssets, isDev)
 	r := mux.NewRouter()
-	r.PathPrefix("/static").Handler(staticAssets)
-	r.HandleFunc("/index", s.wrap(showIndex)).Methods("GET")
-	r.HandleFunc("/index", s.wrap(updateIndex)).Methods("POST")
-	r.HandleFunc("/error", exampleError).Methods("GET")
-	r.HandleFunc("/panic", examplePanic).Methods("GET")
+	r.PathPrefix("/static").Handler(staticAssets).Name("static")
+	r.HandleFunc("/index", s.wrap(showIndex)).Methods("GET").Name("showIndex")
+	r.HandleFunc("/index", s.wrap(updateIndex)).Methods("POST").Name("updateIndex")
+	r.HandleFunc("/error", exampleError).Methods("GET").Name("exampleError")
+	r.HandleFunc("/panic", examplePanic).Methods("GET").Name("examplePanic")
 	r.Handle("/", http.RedirectHandler("/index", http.StatusFound))
-	r.Use(noStoreCacheControl)
+	r.Use(noStoreCacheControl, setRouteTagName)
 	return r
 }
 
