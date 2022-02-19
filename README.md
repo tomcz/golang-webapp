@@ -1,9 +1,10 @@
-# golang-webapp
+# golang-webapp (otel)
 
 This project provides a basic web application [skeleton](https://wiki.c2.com/?WalkingSkeleton) written in golang, to make it easier to get something rolling without trying to figure out how to link all the bits together.
 
 Features:
 
+* [OpenTelemetry](https://opentelemetry.io/) traces.
 * Cookie-based HTTP sessions.
 * Static assets served directly from the webapp.
 * Server-side-rendered HTML templates, with buffered template rendering to prevent output of incomplete or malformed content in the event of template evaluation errors.
