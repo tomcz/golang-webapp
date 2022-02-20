@@ -77,7 +77,7 @@ func panicRecovery(next http.Handler) http.Handler {
 			if p := recover(); p != nil {
 				stack := string(debug.Stack())
 				rset(r, "panic_stack", stack)
-				rset(r, "err", fmt.Errorf("panic: %v", p))
+				rerr(r, fmt.Errorf("panic: %v", p))
 				render500(w, r, "Request failed")
 			}
 		}()
@@ -114,6 +114,10 @@ func setCurrentRouteName(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func rerr(r *http.Request, err error) {
+	rset(r, "err", err)
 }
 
 func rset(r *http.Request, key string, value interface{}) {
