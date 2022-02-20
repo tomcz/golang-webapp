@@ -77,7 +77,7 @@ func panicRecovery(next http.Handler) http.Handler {
 			if p := recover(); p != nil {
 				stack := string(debug.Stack())
 				rset(r, "panic_stack", stack)
-				rset(r, "panic", p)
+				rset(r, "err.panic", p)
 				render500(w, r, "Request failed")
 			}
 		}()
