@@ -65,7 +65,7 @@ func requestLogger(next http.Handler, logger log.FieldLogger) http.Handler {
 		fields["req_remote_addr"] = r.RemoteAddr
 
 		if referer := r.Referer(); referer != "" {
-			fields["referer"] = referer
+			fields["req_referer"] = referer
 		}
 		if loc := rw.Header().Get("Location"); loc != "" {
 			fields["res_location"] = loc
