@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/securecookie"
@@ -73,7 +74,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if err == nil {
 		return true // saved properly
 	}
-	rset(r, "err.session_save", err)
+	rset(r, "err", fmt.Errorf("session_save: %w", err))
 	render500(w, r, "Failed to save session")
 	return false
 }
