@@ -2,16 +2,13 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"runtime/debug"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/securecookie"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
@@ -81,7 +78,7 @@ func panicRecovery(next http.Handler) http.Handler {
 				stack := string(debug.Stack())
 				rlog(r, "panic_stack", stack)
 				rlog(r, "panic", p)
-				render500(w, r, "request failed")
+				render500(w, r, "Request failed")
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -126,13 +123,8 @@ func rlog(r *http.Request, key string, value interface{}) {
 }
 
 func render500(w http.ResponseWriter, r *http.Request, msg string) {
-	errID := newErrorID()
-	rlog(r, "err_id", errID)
-	message := fmt.Sprintf("[%s] %s", errID, msg)
-	http.Error(w, message, http.StatusInternalServerError)
-}
-
-func newErrorID() string {
-	// unique-enough, short, and unambigious, error reference for users to notify us
-	return strings.ToUpper(hex.EncodeToString(securecookie.GenerateRandomKey(4)))
+	if id, ok := r.Context().Value(reqIdKey).(string); ok {
+		msg = fmt.Sprintf("ID: %s\nError: %s\n", id, msg)
+	}
+	http.Error(w, msg, http.StatusInternalServerError)
 }

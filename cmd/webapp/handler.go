@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -44,8 +43,7 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func exampleError(w http.ResponseWriter, r *http.Request) {
-	rlog(r, "example_error", errors.New("wibble"))
-	render500(w, r, "example error")
+	render500(w, r, "Example error")
 }
 
 func examplePanic(http.ResponseWriter, *http.Request) {
