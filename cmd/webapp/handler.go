@@ -19,7 +19,7 @@ func newHandler(s *sessionStore, isDev bool) http.Handler {
 	r.HandleFunc("/error", exampleError).Methods("GET").Name("exampleError")
 	r.HandleFunc("/panic", examplePanic).Methods("GET").Name("examplePanic")
 	r.Handle("/", http.RedirectHandler("/index", http.StatusFound))
-	r.Use(noStoreCacheControl, setRouteName)
+	r.Use(noStoreCacheControl, setCurrentRouteName)
 	return r
 }
 
