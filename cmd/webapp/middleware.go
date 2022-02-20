@@ -28,7 +28,6 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	h = sm.Handler(h)
 	h = panicRecovery(h)
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
-	// http.server_name name is updated per-request by setCurrentRouteName
 	return otelhttp.NewHandler(h, "handler")
 }
 
@@ -82,7 +81,6 @@ func setCurrentRouteName(next http.Handler) http.Handler {
 		if route := mux.CurrentRoute(r); route != nil {
 			span := trace.SpanFromContext(r.Context())
 			if name := route.GetName(); name != "" {
-				// overwrite the initial withMiddleware default name
 				span.SetAttributes(attribute.String("http.server_name", name))
 			}
 		}
