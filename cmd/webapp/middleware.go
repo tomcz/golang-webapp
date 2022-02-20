@@ -82,14 +82,14 @@ func setCurrentRouteAttributes(next http.Handler) http.Handler {
 		if route := mux.CurrentRoute(r); route != nil {
 			span := trace.SpanFromContext(r.Context())
 			if name := route.GetName(); name != "" {
-				// Technically-speaking this should be the URL http server name
-				// but otelhttp uses the name of the operation (i.e. "handler")
+				// Technically-speaking this should be the URL http server name,
+				// but otelhttp uses the name of the operation (i.e. "handler"),
 				// so let's set it to the name of the matched gorilla/mux route.
 				span.SetAttributes(semconv.HTTPServerNameKey.String(name))
 			}
 			if tmpl, err := route.GetPathTemplate(); err == nil {
-				// These aren't in the spec format of /path/:id but since we're
-				// matching with gorilla/mux we don't have anything else to use.
+				// These aren't in the spec format of /path/:id, but since we're
+				// matching with gorilla/mux we can only provide what we have.
 				span.SetAttributes(semconv.HTTPRouteKey.String(tmpl))
 			}
 		}
