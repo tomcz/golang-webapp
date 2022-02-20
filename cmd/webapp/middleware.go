@@ -12,7 +12,6 @@ import (
 	"github.com/unrolled/secure"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -80,9 +79,9 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 func setCurrentRouteName(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if route := mux.CurrentRoute(r); route != nil {
+			span := trace.SpanFromContext(r.Context())
 			if name := route.GetName(); name != "" {
-				span := trace.SpanFromContext(r.Context())
-				span.SetAttributes(semconv.HTTPRouteKey.String(name))
+				span.SetAttributes(attribute.String("http.route_name", name))
 			}
 		}
 		next.ServeHTTP(w, r)
