@@ -81,7 +81,7 @@ func setCurrentRouteName(next http.Handler) http.Handler {
 		if route := mux.CurrentRoute(r); route != nil {
 			span := trace.SpanFromContext(r.Context())
 			if name := route.GetName(); name != "" {
-				span.SetAttributes(attribute.String("http.route_name", name))
+				span.SetAttributes(attribute.String("http.server_name", name))
 			}
 		}
 		next.ServeHTTP(w, r)
