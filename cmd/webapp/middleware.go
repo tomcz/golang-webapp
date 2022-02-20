@@ -29,6 +29,9 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	h = sm.Handler(h)
 	h = panicRecovery(h)
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
+	// We want to trace every request, whether matched by handler.go or not,
+	// and we want to capture all panics and circuit breaker actions, so we're
+	// using the otelhttp handler and not otel's gorilla/mux middleware.
 	return otelhttp.NewHandler(h, "handler")
 }
 
