@@ -36,8 +36,6 @@ func main() {
 	server := &http.Server{Addr: *addr, Handler: handler}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	var group errgroup.Group
 	group.Go(func() error {
 		defer cancel()
@@ -68,6 +66,7 @@ func main() {
 		}
 	})
 	if err := group.Wait(); err != nil {
-		logger.WithError(err).Fatalln("server failed")
+		logger.WithError(err).Fatalln("application failed")
 	}
+	logger.Info("application stopped")
 }
