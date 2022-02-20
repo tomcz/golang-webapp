@@ -108,7 +108,7 @@ func staticCacheControl(next http.Handler, isDev bool) http.Handler {
 	})
 }
 
-func setRouteName(next http.Handler) http.Handler {
+func setCurrentRouteName(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if route := mux.CurrentRoute(r); route != nil {
 			if name := route.GetName(); name != "" {
