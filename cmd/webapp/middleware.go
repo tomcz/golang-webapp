@@ -76,8 +76,8 @@ func panicRecovery(next http.Handler) http.Handler {
 		defer func() {
 			if p := recover(); p != nil {
 				stack := string(debug.Stack())
-				rlog(r, "panic_stack", stack)
-				rlog(r, "panic", p)
+				rset(r, "panic_stack", stack)
+				rset(r, "panic", p)
 				render500(w, r, "Request failed")
 			}
 		}()
@@ -109,14 +109,14 @@ func setCurrentRouteName(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if route := mux.CurrentRoute(r); route != nil {
 			if name := route.GetName(); name != "" {
-				rlog(r, "req_route", name)
+				rset(r, "req_route", name)
 			}
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-func rlog(r *http.Request, key string, value interface{}) {
+func rset(r *http.Request, key string, value interface{}) {
 	if md, ok := r.Context().Value(reqMdKey).(log.Fields); ok {
 		md[key] = value
 	}

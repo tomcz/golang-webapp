@@ -73,7 +73,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if err == nil {
 		return true // saved properly
 	}
-	rlog(r, "session_save", err)
+	rset(r, "session_save", err)
 	render500(w, r, "Failed to save session")
 	return false
 }
