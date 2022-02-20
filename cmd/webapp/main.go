@@ -59,8 +59,6 @@ func main() {
 	server := &http.Server{Addr: *addr, Handler: handler}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	var group errgroup.Group
 	group.Go(func() error {
 		defer cancel()
