@@ -58,10 +58,8 @@ func main() {
 	handler := withMiddleware(newHandler(session, isDev), isDev)
 	server := &http.Server{Addr: *addr, Handler: handler}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	var group errgroup.Group
+	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
-		defer cancel()
 		var err error
 		if *tlsCertFile != "" && *tlsKeyFile != "" {
 			log.Println("starting server with TLS on", *addr)
