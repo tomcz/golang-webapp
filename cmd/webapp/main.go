@@ -35,10 +35,8 @@ func main() {
 	handler := withMiddleware(newHandler(session, isDev), logger, isDev)
 	server := &http.Server{Addr: *addr, Handler: handler}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	var group errgroup.Group
+	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
-		defer cancel()
 		var err error
 		ll := logger.WithField("addr", *addr)
 		if *tlsCertFile != "" && *tlsKeyFile != "" {
