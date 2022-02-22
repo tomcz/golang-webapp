@@ -9,6 +9,7 @@ import (
 
 	"github.com/oxtoacart/bpool"
 
+	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/templates"
 )
 
@@ -63,7 +64,7 @@ func newTemplate(templatePaths []string) (*template.Template, error) {
 	}
 	// no need to recreate templates in prod builds
 	// since they're not going to change between renders
-	if templates.Embedded {
+	if build.IsProd {
 		tmplCache[cacheKey] = tmpl
 	}
 	return tmpl, nil
