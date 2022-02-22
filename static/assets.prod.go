@@ -11,6 +11,9 @@ import (
 //go:embed css/*
 var content embed.FS
 
-// FS provides a filesystem of html templates
+// FS provides a filesystem of static assets
 // that are embedded into the production binary.
 var FS http.FileSystem = http.FS(content)
+
+// Embedded content flag.
+const Embedded = true
