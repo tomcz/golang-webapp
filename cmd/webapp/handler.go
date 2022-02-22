@@ -5,11 +5,13 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/static"
 )
 
 func newHandler(s *sessionStore) http.Handler {
-	staticAssets := staticCacheControl(http.StripPrefix("/static/", http.FileServer(static.FS)))
+	staticAssets := http.StripPrefix("/static/", http.FileServer(static.FS))
+	staticAssets = staticCacheControl(staticAssets, build.IsProd)
 	r := mux.NewRouter()
 	r.PathPrefix("/static").Handler(staticAssets).Name("static")
 	r.HandleFunc("/index", s.wrap(showIndex)).Methods("GET").Name("showIndex")
