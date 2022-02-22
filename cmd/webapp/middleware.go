@@ -13,6 +13,8 @@ import (
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
+
+	"github.com/tomcz/golang-webapp/build"
 )
 
 const (
@@ -92,9 +94,9 @@ func noStoreCacheControl(next http.Handler) http.Handler {
 	})
 }
 
-func staticCacheControl(next http.Handler, embedded bool) http.Handler {
+func staticCacheControl(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if embedded {
+		if build.IsProd {
 			// embedded content can be cached by the browser for 10 minutes
 			w.Header().Set("Cache-Control", "private, max-age=600")
 		} else {

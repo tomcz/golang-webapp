@@ -3,4 +3,4 @@
 
 package build
 
-const buildName = "prod"
+const IsProd = true
