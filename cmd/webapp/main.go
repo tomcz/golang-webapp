@@ -46,11 +46,11 @@ func main() {
 			ll.Info("starting server without TLS")
 			err = server.ListenAndServe()
 		}
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			return err
+		if errors.Is(err, http.ErrServerClosed) {
+			ll.Info("server stopped")
+			return nil
 		}
-		ll.Info("server stopped")
-		return nil
+		return err
 	})
 	group.Go(func() error {
 		signalChan := make(chan os.Signal, 1)
