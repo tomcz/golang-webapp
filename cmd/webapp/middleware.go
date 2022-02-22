@@ -92,14 +92,14 @@ func noStoreCacheControl(next http.Handler) http.Handler {
 	})
 }
 
-func staticCacheControl(next http.Handler, isDev bool) http.Handler {
+func staticCacheControl(next http.Handler, embedded bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if isDev {
-			// don't cache locally, so we can work on the content
-			w.Header().Set("Cache-Control", "no-cache")
-		} else {
+		if embedded {
 			// embedded content can be cached by the browser for 10 minutes
 			w.Header().Set("Cache-Control", "private, max-age=600")
+		} else {
+			// don't cache local assets, so we can work on them easily
+			w.Header().Set("Cache-Control", "no-cache")
 		}
 		next.ServeHTTP(w, r)
 	})

@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/oxtoacart/bpool"
 
@@ -15,6 +16,8 @@ import (
 // buffers when we execute templates to avoid writing
 // incomplete or malformed data to the response
 var bufPool = bpool.NewBufferPool(48)
+
+var tmplCache = make(map[string]*template.Template)
 
 type renderData map[string]interface{}
 
@@ -45,6 +48,10 @@ func render(w http.ResponseWriter, r *http.Request, data renderData, templatePat
 }
 
 func newTemplate(templatePaths []string) (*template.Template, error) {
+	cacheKey := strings.Join(templatePaths, ",")
+	if tmpl, ok := tmplCache[cacheKey]; ok {
+		return tmpl, nil
+	}
 	tmpl := template.New("")
 	for _, path := range templatePaths {
 		buf, err := readTemplate(path)
@@ -55,6 +62,11 @@ func newTemplate(templatePaths []string) (*template.Template, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s parse failed: %w", path, err)
 		}
+	}
+	// no need to recreate templates in prod builds
+	// since they're not going to change between renders
+	if templates.Embedded {
+		tmplCache[cacheKey] = tmpl
 	}
 	return tmpl, nil
 }

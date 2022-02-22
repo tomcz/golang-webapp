@@ -32,7 +32,7 @@ func main() {
 
 	isDev := *env == "dev"
 	session := newSessionStore(*cookieAuth, *cookieEnc, *cookieName)
-	handler := withMiddleware(newHandler(session, isDev), logger, isDev)
+	handler := withMiddleware(newHandler(session), logger, isDev)
 	server := &http.Server{Addr: *addr, Handler: handler}
 
 	group, ctx := errgroup.WithContext(context.Background())
