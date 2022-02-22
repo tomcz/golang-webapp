@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/oxtoacart/bpool"
 
@@ -18,7 +19,10 @@ import (
 // incomplete or malformed data to the response
 var bufPool = bpool.NewBufferPool(48)
 
+// no need to recreate templates in prod builds
+// since they're not going to change between renders
 var tmplCache = make(map[string]*template.Template)
+var tmplLock sync.RWMutex
 
 type renderData map[string]interface{}
 
@@ -47,9 +51,15 @@ func render(w http.ResponseWriter, r *http.Request, data renderData, templatePat
 }
 
 func newTemplate(templatePaths []string) (*template.Template, error) {
-	cacheKey := strings.Join(templatePaths, ",")
-	if tmpl, ok := tmplCache[cacheKey]; ok {
-		return tmpl, nil
+	var cacheKey string
+	if build.IsProd {
+		cacheKey = strings.Join(templatePaths, ",")
+		tmplLock.RLock()
+		tmpl, ok := tmplCache[cacheKey]
+		tmplLock.RUnlock()
+		if ok {
+			return tmpl, nil
+		}
 	}
 	tmpl := template.New("")
 	for _, path := range templatePaths {
@@ -62,10 +72,10 @@ func newTemplate(templatePaths []string) (*template.Template, error) {
 			return nil, fmt.Errorf("%s parse failed: %w", path, err)
 		}
 	}
-	// no need to recreate templates in prod builds
-	// since they're not going to change between renders
 	if build.IsProd {
+		tmplLock.Lock()
 		tmplCache[cacheKey] = tmpl
+		tmplLock.Unlock()
 	}
 	return tmpl, nil
 }
