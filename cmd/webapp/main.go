@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"io"
 	"log"
 	"net/http"
@@ -24,23 +23,24 @@ import (
 )
 
 func main() {
-	env := flag.String("env", "dev", "Environment name")
-	addr := flag.String("addr", ":3000", "Listen address")
-	cookieAuth := flag.String("cookie-auth", "", "Cookie authentication key")
-	cookieEnc := flag.String("cookie-enc", "", "Cookie encryption key")
-	cookieName := flag.String("cookie-name", "example", "Cookie name")
-	tlsCertFile := flag.String("tls-cert", "", "TLS certificate file")
-	tlsKeyFile := flag.String("tls-key", "", "TLS private key file")
-	traceFile := flag.String("trace-out", "target/traces.jsonl", "trace output file")
-	flag.Parse()
+	env := osLookupEnv("ENV", "dev")
+	addr := osLookupEnv("LISTEN_ADDR", ":3000")
+	cookieAuth := osLookupEnv("COOKIE_AUTH_KEY", "")
+	cookieEnc := osLookupEnv("COOKIE_ENC_KEY", "")
+	cookieName := osLookupEnv("COOKIE_NAME", "example")
+	tlsCertFile := osLookupEnv("TLS_CERT_FILE", "")
+	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
+	traceFile := osLookupEnv("TRACE_LOG_FILE", "target/traces.jsonl")
 
-	fp, err := os.Create(*traceFile)
+	log.Printf("starting application version %s in %s environment\n", build.Version(), env)
+
+	fp, err := os.Create(traceFile)
 	if err != nil {
-		log.Fatalf("failed to create %s - error is: %v\n", *traceFile, err)
+		log.Fatalf("failed to create %s - error is: %v\n", traceFile, err)
 	}
-	log.Println("writing otel traces to", *traceFile)
+	log.Println("writing otel traces to", traceFile)
 
-	tp, err := newTraceProvider(fp, *env)
+	tp, err := newTraceProvider(fp, env)
 	if err != nil {
 		fp.Close() // fatal logs bork defer
 		log.Fatalln("failed to create trace provider - error is:", err)
@@ -53,19 +53,19 @@ func main() {
 		),
 	)
 
-	isDev := *env == "dev"
-	session := newSessionStore(*cookieAuth, *cookieEnc, *cookieName)
+	isDev := env == "dev"
+	session := newSessionStore(cookieAuth, cookieEnc, cookieName)
 	handler := withMiddleware(newHandler(session), isDev)
-	server := &http.Server{Addr: *addr, Handler: handler}
+	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
 		var err error
-		if *tlsCertFile != "" && *tlsKeyFile != "" {
-			log.Println("starting server with TLS on", *addr)
-			err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
+		if tlsCertFile != "" && tlsKeyFile != "" {
+			log.Println("starting server with TLS on", addr)
+			err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		} else {
-			log.Println("starting server without TLS on", *addr)
+			log.Println("starting server without TLS on", addr)
 			err = server.ListenAndServe()
 		}
 		if errors.Is(err, http.ErrServerClosed) {
@@ -93,6 +93,13 @@ func main() {
 		log.Fatalln("application failed - error is:", err)
 	}
 	log.Println("application stopped")
+}
+
+func osLookupEnv(key, defaultValue string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return defaultValue
 }
 
 func newTraceProvider(w io.Writer, env string) (*trace.TracerProvider, error) {
