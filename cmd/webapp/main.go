@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,32 +15,31 @@ import (
 )
 
 func main() {
-	env := flag.String("env", "dev", "Environment name")
-	addr := flag.String("addr", ":3000", "Listen address")
-	cookieAuth := flag.String("cookie-auth", "", "Cookie authentication key")
-	cookieEnc := flag.String("cookie-enc", "", "Cookie encryption key")
-	cookieName := flag.String("cookie-name", "example", "Cookie name")
-	tlsCertFile := flag.String("tls-cert", "", "TLS certificate file")
-	tlsKeyFile := flag.String("tls-key", "", "TLS private key file")
-	flag.Parse()
+	env := osLookupEnv("ENV", "dev")
+	addr := osLookupEnv("LISTEN_ADDR", ":3000")
+	cookieAuth := osLookupEnv("COOKIE_AUTH_KEY", "")
+	cookieEnc := osLookupEnv("COOKIE_ENC_KEY", "")
+	cookieName := osLookupEnv("COOKIE_NAME", "example")
+	tlsCertFile := osLookupEnv("TLS_CERT_FILE", "")
+	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
 
 	logger := log.WithFields(log.Fields{
 		"build": build.Version(),
-		"env":   *env,
+		"env":   env,
 	})
 
-	isDev := *env == "dev"
-	session := newSessionStore(*cookieAuth, *cookieEnc, *cookieName)
+	isDev := env == "dev"
+	session := newSessionStore(cookieAuth, cookieEnc, cookieName)
 	handler := withMiddleware(newHandler(session), logger, isDev)
-	server := &http.Server{Addr: *addr, Handler: handler}
+	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
 		var err error
-		ll := logger.WithField("addr", *addr)
-		if *tlsCertFile != "" && *tlsKeyFile != "" {
+		ll := logger.WithField("addr", addr)
+		if tlsCertFile != "" && tlsKeyFile != "" {
 			ll.Info("starting server with TLS")
-			err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
+			err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		} else {
 			ll.Info("starting server without TLS")
 			err = server.ListenAndServe()
@@ -67,4 +65,11 @@ func main() {
 		logger.WithError(err).Fatalln("application failed")
 	}
 	logger.Info("application stopped")
+}
+
+func osLookupEnv(key, defaultValue string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return defaultValue
 }
