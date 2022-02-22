@@ -68,11 +68,11 @@ func main() {
 			log.Println("starting server without TLS on", *addr)
 			err = server.ListenAndServe()
 		}
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			return err
+		if errors.Is(err, http.ErrServerClosed) {
+			log.Println("server stopped")
+			return nil
 		}
-		log.Println("server stopped")
-		return nil
+		return err
 	})
 	group.Go(func() error {
 		defer func() {
