@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -23,6 +24,13 @@ import (
 )
 
 func main() {
+	if err := realMain(); err != nil {
+		log.Fatalln("application failed - error is:", err)
+	}
+	log.Println("application stopped")
+}
+
+func realMain() error {
 	env := osLookupEnv("ENV", "dev")
 	addr := osLookupEnv("LISTEN_ADDR", ":3000")
 	cookieAuth := osLookupEnv("COOKIE_AUTH_KEY", "")
@@ -36,15 +44,18 @@ func main() {
 
 	fp, err := os.Create(traceFile)
 	if err != nil {
-		log.Fatalf("failed to create %s - error is: %v\n", traceFile, err)
+		return fmt.Errorf("failed to create %s: %w", traceFile, err)
 	}
+	defer fp.Close()
+
 	log.Println("writing otel traces to", traceFile)
 
 	tp, err := newTraceProvider(fp, env)
 	if err != nil {
-		fp.Close() // fatal logs bork defer
-		log.Fatalln("failed to create trace provider - error is:", err)
+		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
+	defer tp.Shutdown(context.Background())
+
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
@@ -75,10 +86,6 @@ func main() {
 		return err
 	})
 	group.Go(func() error {
-		defer func() {
-			tp.Shutdown(context.Background())
-			fp.Close()
-		}()
 		signalChan := make(chan os.Signal, 1)
 		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 		select {
@@ -89,10 +96,7 @@ func main() {
 			return nil
 		}
 	})
-	if err = group.Wait(); err != nil {
-		log.Fatalln("application failed - error is:", err)
-	}
-	log.Println("application stopped")
+	return group.Wait()
 }
 
 func osLookupEnv(key, defaultValue string) string {
