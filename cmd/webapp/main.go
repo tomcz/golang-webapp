@@ -47,7 +47,7 @@ func realMain() error {
 	if err != nil {
 		return fmt.Errorf("failed to create %s: %w", traceFile, err)
 	}
-	defer closeQuietly(traceFile, fp.Close)
+	defer closeCleanly(traceFile, fp.Close)
 
 	log.Println("writing otel traces to", traceFile)
 
@@ -141,7 +141,7 @@ func closeWithTimeout(src string, fn func(context.Context) error) {
 	}
 }
 
-func closeQuietly(src string, fn func() error) {
+func closeCleanly(src string, fn func() error) {
 	if err := fn(); err != nil {
 		log.Printf("unclean %s close: %v\n", src, err)
 	}
