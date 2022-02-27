@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -54,7 +55,7 @@ func realMain() error {
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
-	defer tp.Shutdown(context.Background())
+	defer shutdownTraceProvider(tp)
 
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(
@@ -128,4 +129,10 @@ func newTraceProvider(w io.Writer, env string) (*trace.TracerProvider, error) {
 		trace.WithResource(tr),
 		trace.WithBatcher(tw),
 	), nil
+}
+
+func shutdownTraceProvider(tp *trace.TracerProvider) {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	tp.Shutdown(ctx)
+	cancel()
 }
