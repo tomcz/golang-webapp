@@ -55,7 +55,7 @@ func realMain() error {
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
-	defer shutdownTraceProvider(tp)
+	defer shutdown("trace provider", tp.Shutdown)
 
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(
@@ -92,7 +92,8 @@ func realMain() error {
 		select {
 		case <-signalChan:
 			log.Println("shutdown received")
-			return server.Shutdown(context.Background())
+			shutdown("server", server.Shutdown)
+			return nil
 		case <-ctx.Done():
 			return nil
 		}
@@ -131,8 +132,11 @@ func newTraceProvider(w io.Writer, env string) (*trace.TracerProvider, error) {
 	), nil
 }
 
-func shutdownTraceProvider(tp *trace.TracerProvider) {
+func shutdown(src string, fn func(context.Context) error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	tp.Shutdown(ctx)
-	cancel()
+	defer cancel()
+
+	if err := fn(ctx); err != nil {
+		log.Printf("unclean %s shutdown: %v\n", src, err)
+	}
 }
