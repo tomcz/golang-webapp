@@ -47,7 +47,7 @@ func realMain() error {
 	if err != nil {
 		return fmt.Errorf("failed to create %s: %w", traceFile, err)
 	}
-	defer fp.Close()
+	defer closeQuietly(traceFile, fp.Close)
 
 	log.Println("writing otel traces to", traceFile)
 
@@ -55,7 +55,7 @@ func realMain() error {
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
-	defer shutdown("trace provider", tp.Shutdown)
+	defer closeTimeout("trace provider", tp.Shutdown)
 
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(
@@ -92,7 +92,7 @@ func realMain() error {
 		select {
 		case <-signalChan:
 			log.Println("shutdown received")
-			shutdown("server", server.Shutdown)
+			closeTimeout("server", server.Shutdown)
 			return nil
 		case <-ctx.Done():
 			return nil
@@ -132,11 +132,17 @@ func newTraceProvider(w io.Writer, env string) (*trace.TracerProvider, error) {
 	), nil
 }
 
-func shutdown(src string, fn func(context.Context) error) {
+func closeTimeout(src string, fn func(context.Context) error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	if err := fn(ctx); err != nil {
-		log.Printf("unclean %s shutdown: %v\n", src, err)
+		log.Printf("unclean %s close: %v\n", src, err)
+	}
+}
+
+func closeQuietly(src string, fn func() error) {
+	if err := fn(); err != nil {
+		log.Printf("unclean %s close: %v\n", src, err)
 	}
 }
