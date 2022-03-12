@@ -41,9 +41,9 @@ func panicRecovery(next http.Handler) http.Handler {
 			if p := recover(); p != nil {
 				var err error
 				if e, ok := p.(error); ok {
-					err = e
+					err = fmt.Errorf("panic: %w", e)
 				} else {
-					err = fmt.Errorf("%v", p)
+					err = fmt.Errorf("panic: %v", p)
 				}
 				errID := newErrorID()
 				span := trace.SpanFromContext(r.Context())
