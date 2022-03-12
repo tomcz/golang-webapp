@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	oll "github.com/bombsimon/logrusr/v2"
+	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -26,9 +27,9 @@ import (
 
 func main() {
 	if err := realMain(); err != nil {
-		log.Fatalln("application failed - error is:", err)
+		log.WithError(err).Fatal("application failed")
 	}
-	log.Println("application stopped")
+	log.Info("application stopped")
 }
 
 func realMain() error {
@@ -41,7 +42,7 @@ func realMain() error {
 	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
 	traceFile := osLookupEnv("TRACE_LOG_FILE", "target/traces.jsonl")
 
-	log.Printf("starting application version %s in %s environment\n", build.Version(), env)
+	log.WithField("build", build.Version()).WithField("env", env).Info("starting application")
 
 	fp, err := os.Create(traceFile)
 	if err != nil {
@@ -49,7 +50,7 @@ func realMain() error {
 	}
 	defer closeCleanly(traceFile, fp.Close)
 
-	log.Println("writing otel traces to", traceFile)
+	log.WithField("file", traceFile).Info("otel traces will be written to a file")
 
 	tp, err := newTraceProvider(fp, env)
 	if err != nil {
@@ -57,6 +58,7 @@ func realMain() error {
 	}
 	defer closeWithTimeout("trace provider", tp.Shutdown)
 
+	otel.SetLogger(oll.New(log.New().WithField("component", "otel")))
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
@@ -73,15 +75,16 @@ func realMain() error {
 	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
 		var err error
+		ll := log.WithField("addr", addr)
 		if tlsCertFile != "" && tlsKeyFile != "" {
-			log.Println("starting server with TLS on", addr)
+			ll.Info("starting server with TLS")
 			err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		} else {
-			log.Println("starting server without TLS on", addr)
+			ll.Info("starting server without TLS")
 			err = server.ListenAndServe()
 		}
 		if errors.Is(err, http.ErrServerClosed) {
-			log.Println("server stopped")
+			ll.Info("server stopped")
 			return nil
 		}
 		return err
@@ -91,7 +94,7 @@ func realMain() error {
 		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case <-signalChan:
-			log.Println("shutdown received")
+			log.Info("shutdown received")
 			closeWithTimeout("server", server.Shutdown)
 			return nil
 		case <-ctx.Done():
@@ -137,12 +140,12 @@ func closeWithTimeout(src string, fn func(context.Context) error) {
 	defer cancel()
 
 	if err := fn(ctx); err != nil {
-		log.Printf("unclean %s close: %v\n", src, err)
+		log.WithError(err).WithField("src", src).Error("unclean close")
 	}
 }
 
 func closeCleanly(src string, fn func() error) {
 	if err := fn(); err != nil {
-		log.Printf("unclean %s close: %v\n", src, err)
+		log.WithError(err).WithField("src", src).Error("unclean close")
 	}
 }
