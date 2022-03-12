@@ -12,7 +12,7 @@ import (
 	"time"
 
 	oll "github.com/bombsimon/logrusr/v2"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -24,6 +24,15 @@ import (
 
 	"github.com/tomcz/golang-webapp/build"
 )
+
+var log logrus.FieldLogger
+
+func init() {
+	log = logrus.WithFields(logrus.Fields{
+		"build": build.Version(),
+		"env":   osLookupEnv("ENV", "dev"),
+	})
+}
 
 func main() {
 	if err := realMain(); err != nil {
@@ -42,7 +51,7 @@ func realMain() error {
 	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
 	traceFile := osLookupEnv("TRACE_LOG_FILE", "target/traces.jsonl")
 
-	log.WithField("build", build.Version()).WithField("env", env).Info("starting application")
+	log.Info("starting application")
 
 	fp, err := os.Create(traceFile)
 	if err != nil {
@@ -58,7 +67,7 @@ func realMain() error {
 	}
 	defer closeWithTimeout("trace provider", tp.Shutdown)
 
-	otel.SetLogger(oll.New(log.New().WithField("component", "otel")))
+	otel.SetLogger(oll.New(log.WithField("component", "otel")))
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
