@@ -9,14 +9,14 @@ import (
 
 func newHandler(s *sessionStore) http.Handler {
 	r := mux.NewRouter()
+	registerStaticAssetRoutes(r)
+	r.Handle("/", http.RedirectHandler("/index", http.StatusFound)).Name("root")
 	r.HandleFunc("/index", s.wrap(showIndex)).Methods("GET").Name("showIndex")
 	r.HandleFunc("/index", s.wrap(updateIndex)).Methods("POST").Name("updateIndex")
 	r.HandleFunc("/error", exampleError).Methods("GET").Name("exampleError")
 	r.HandleFunc("/panic", examplePanic).Methods("GET").Name("examplePanic")
 	r.HandleFunc("/test/{name}", s.wrap(testName)).Methods("GET").Name("testName")
-	r.Handle("/", http.RedirectHandler("/index", http.StatusFound))
 	r.Use(noStoreCacheControl, setCurrentRouteAttributes)
-	registerStaticAssetRoutes(r)
 	return r
 }
 
