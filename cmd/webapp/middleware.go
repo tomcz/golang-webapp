@@ -42,19 +42,19 @@ func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 		fields := logrus.Fields{}
 		reqID := uuid.New().String()
 
-		rw := negroni.NewResponseWriter(w)
+		ww := negroni.NewResponseWriter(w)
 		ctx := context.WithValue(r.Context(), reqIdKey, reqID)
 		ctx = context.WithValue(ctx, reqMdKey, fields)
 
-		next.ServeHTTP(rw, r.WithContext(ctx))
+		next.ServeHTTP(ww, r.WithContext(ctx))
 		duration := time.Since(start)
 
 		fields["req_id"] = reqID
 		fields["req_start_at"] = start
 		fields["res_duration_ms"] = duration.Milliseconds()
 		fields["res_duration_ns"] = duration.Nanoseconds()
-		fields["res_status"] = rw.Status()
-		fields["res_size"] = rw.Size()
+		fields["res_status"] = ww.Status()
+		fields["res_size"] = ww.Size()
 		fields["req_host"] = r.Host
 		fields["req_method"] = r.Method
 		fields["req_path"] = r.URL.Path
@@ -64,7 +64,7 @@ func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 		if referer := r.Referer(); referer != "" {
 			fields["req_referer"] = referer
 		}
-		if loc := rw.Header().Get("Location"); loc != "" {
+		if loc := ww.Header().Get("Location"); loc != "" {
 			fields["res_location"] = loc
 		}
 		log.WithFields(fields).Info("request finished")
