@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/build"
@@ -23,19 +23,19 @@ func main() {
 	tlsCertFile := osLookupEnv("TLS_CERT_FILE", "")
 	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
 
-	logger := log.WithFields(log.Fields{
+	log := logrus.WithFields(logrus.Fields{
 		"build": build.Version(),
 		"env":   env,
 	})
 
 	session := newSessionStore(cookieAuth, cookieEnc, cookieName)
-	handler := withMiddleware(newHandler(session), logger, env == "dev")
+	handler := withMiddleware(newHandler(session), log, env == "dev")
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
 		var err error
-		ll := logger.WithField("addr", addr)
+		ll := log.WithField("addr", addr)
 		if tlsCertFile != "" && tlsKeyFile != "" {
 			ll.Info("starting server with TLS")
 			err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
@@ -54,16 +54,16 @@ func main() {
 		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case <-signalChan:
-			logger.Info("shutdown received")
+			log.Info("shutdown received")
 			return server.Shutdown(context.Background())
 		case <-ctx.Done():
 			return nil
 		}
 	})
 	if err := group.Wait(); err != nil {
-		logger.WithError(err).Fatalln("application failed")
+		log.WithError(err).Fatalln("application failed")
 	}
-	logger.Info("application stopped")
+	log.Info("application stopped")
 }
 
 func osLookupEnv(key, defaultValue string) string {

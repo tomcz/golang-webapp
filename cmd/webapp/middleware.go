@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
@@ -20,7 +20,7 @@ const (
 	reqMdKey = "req_md"
 )
 
-func withMiddleware(h http.Handler, logger log.FieldLogger, isDev bool) http.Handler {
+func withMiddleware(h http.Handler, log logrus.FieldLogger, isDev bool) http.Handler {
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
 		FrameDeny:            true,
@@ -33,13 +33,13 @@ func withMiddleware(h http.Handler, logger log.FieldLogger, isDev bool) http.Han
 	h = sm.Handler(h)
 	h = panicRecovery(h)
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
-	return requestLogger(h, logger)
+	return requestLogger(h, log)
 }
 
-func requestLogger(next http.Handler, logger log.FieldLogger) http.Handler {
+func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		fields := log.Fields{}
+		fields := logrus.Fields{}
 		reqID := uuid.New().String()
 
 		rw := negroni.NewResponseWriter(w)
@@ -67,7 +67,7 @@ func requestLogger(next http.Handler, logger log.FieldLogger) http.Handler {
 		if loc := rw.Header().Get("Location"); loc != "" {
 			fields["res_location"] = loc
 		}
-		logger.WithFields(fields).Info("request finished")
+		log.WithFields(fields).Info("request finished")
 	})
 }
 
@@ -108,7 +108,7 @@ func rerr(r *http.Request, err error) {
 }
 
 func rset(r *http.Request, key string, value interface{}) {
-	if md, ok := r.Context().Value(reqMdKey).(log.Fields); ok {
+	if md, ok := r.Context().Value(reqMdKey).(logrus.Fields); ok {
 		md[key] = value
 	}
 }
