@@ -14,6 +14,7 @@ func newHandler(s *sessionStore) http.Handler {
 	r.HandleFunc("/index", s.wrap(updateIndex)).Methods("POST").Name("updateIndex")
 	r.HandleFunc("/error", exampleError).Methods("GET").Name("exampleError")
 	r.HandleFunc("/panic", examplePanic).Methods("GET").Name("examplePanic")
+	r.HandleFunc("/test/{name}", s.wrap(testName)).Methods("GET").Name("testName")
 	r.Use(noStoreCacheControl, setCurrentRouteName)
 	return r
 }
@@ -44,4 +45,11 @@ func exampleError(w http.ResponseWriter, r *http.Request) {
 
 func examplePanic(http.ResponseWriter, *http.Request) {
 	panic("wobble")
+}
+
+func testName(w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["name"]
+	s := currentSession(r)
+	s.Values["name"] = name
+	redirect(w, r, "/index")
 }
