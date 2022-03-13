@@ -25,12 +25,16 @@ import (
 	"github.com/tomcz/golang-webapp/build"
 )
 
-var log logrus.FieldLogger
+var (
+	env string
+	log logrus.FieldLogger
+)
 
 func init() {
+	env = osLookupEnv("ENV", "dev")
 	log = logrus.WithFields(logrus.Fields{
 		"build": build.Version(),
-		"env":   osLookupEnv("ENV", "dev"),
+		"env":   env,
 	})
 }
 
@@ -42,7 +46,6 @@ func main() {
 }
 
 func realMain() error {
-	env := osLookupEnv("ENV", "dev")
 	addr := osLookupEnv("LISTEN_ADDR", ":3000")
 	cookieAuth := osLookupEnv("COOKIE_AUTH_KEY", "")
 	cookieEnc := osLookupEnv("COOKIE_ENC_KEY", "")
@@ -61,7 +64,7 @@ func realMain() error {
 
 	log.WithField("file", traceFile).Info("otel traces will be written to a file")
 
-	tp, err := newTraceProvider(fp, env)
+	tp, err := newTraceProvider(fp)
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
@@ -76,9 +79,8 @@ func realMain() error {
 		),
 	)
 
-	isDev := env == "dev"
 	session := newSessionStore(cookieAuth, cookieEnc, cookieName)
-	handler := withMiddleware(newHandler(session), isDev)
+	handler := withMiddleware(newHandler(session), env == "dev")
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.WithContext(context.Background())
@@ -120,7 +122,7 @@ func osLookupEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-func newTraceProvider(w io.Writer, env string) (*trace.TracerProvider, error) {
+func newTraceProvider(w io.Writer) (*trace.TracerProvider, error) {
 	tw, err := stdouttrace.New(stdouttrace.WithWriter(w))
 	if err != nil {
 		return nil, err
