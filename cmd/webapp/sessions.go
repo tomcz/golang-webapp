@@ -17,7 +17,7 @@ type sessionStore struct {
 	name  string
 }
 
-func newSessionStore(authKey, encKey, sessionName string) *sessionStore {
+func newSessionStore(sessionName, authKey, encKey string) *sessionStore {
 	return &sessionStore{
 		store: sessions.NewCookieStore(keyToBytes(authKey), keyToBytes(encKey)),
 		name:  sessionName,
