@@ -79,7 +79,7 @@ func realMain() error {
 		),
 	)
 
-	session := newSessionStore(cookieAuth, cookieEnc, cookieName)
+	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
 	handler := withMiddleware(newHandler(session), env == "dev")
 	server := &http.Server{Addr: addr, Handler: handler}
 
