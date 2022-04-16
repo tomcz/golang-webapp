@@ -24,7 +24,7 @@ var bufPool = bpool.NewBufferPool(48)
 var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
-type renderData map[string]interface{}
+type renderData map[string]any
 
 func render(w http.ResponseWriter, r *http.Request, data renderData, templatePaths ...string) {
 	if !saveSession(w, r) {

@@ -107,7 +107,7 @@ func rerr(r *http.Request, err error) {
 	rset(r, "err", err)
 }
 
-func rset(r *http.Request, key string, value interface{}) {
+func rset(r *http.Request, key string, value any) {
 	if md, ok := r.Context().Value(reqMdKey).(logrus.Fields); ok {
 		md[key] = value
 	}
