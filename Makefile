@@ -1,5 +1,5 @@
 GITCOMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
-LDFLAGS := -X github.com/tomcz/golang-webapp/build.commit=${GITCOMMIT}
+LDFLAGS := -s -w -X github.com/tomcz/golang-webapp/build.commit=${GITCOMMIT}
 
 .PHONY: all
 all: clean format build-prod
