@@ -81,6 +81,10 @@ func setCurrentRouteAttributes(next http.Handler) http.Handler {
 				// These aren't in the spec format of /path/:id, but since we're
 				// matching with gorilla/mux we can only provide what we have.
 				span.SetAttributes(semconv.HTTPRouteKey.String(tmpl))
+			} else {
+				// No template found, we can just use the path as the route
+				// since we want this field to be present for all requests.
+				span.SetAttributes(semconv.HTTPRouteKey.String(r.URL.Path))
 			}
 		}
 		next.ServeHTTP(w, r)
