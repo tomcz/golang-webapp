@@ -85,20 +85,20 @@ func realMain() error {
 
 	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
-		var err error
+		var ex error
 		ll := log.WithField("addr", addr)
 		if tlsCertFile != "" && tlsKeyFile != "" {
 			ll.Info("starting server with TLS")
-			err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
+			ex = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		} else {
 			ll.Info("starting server without TLS")
-			err = server.ListenAndServe()
+			ex = server.ListenAndServe()
 		}
-		if errors.Is(err, http.ErrServerClosed) {
+		if errors.Is(ex, http.ErrServerClosed) {
 			ll.Info("server stopped")
 			return nil
 		}
-		return err
+		return ex
 	})
 	group.Go(func() error {
 		signalChan := make(chan os.Signal, 1)
