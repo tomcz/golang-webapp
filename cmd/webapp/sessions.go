@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-const sessionKey = "session"
+const currentSessionKey = contextKey("current.session")
 
 type sessionStore struct {
 	store sessions.Store
@@ -45,13 +45,13 @@ func (s *sessionStore) wrap(fn http.HandlerFunc) http.HandlerFunc {
 		// We're ignoring the error resulted from decoding an existing session
 		// since Get() always returns a session, even if empty.
 		session, _ := s.store.Get(r, s.name)
-		ctx := context.WithValue(r.Context(), sessionKey, session)
+		ctx := context.WithValue(r.Context(), currentSessionKey, session)
 		fn(w, r.WithContext(ctx))
 	}
 }
 
 func getSession(r *http.Request) *sessions.Session {
-	if s, ok := r.Context().Value(sessionKey).(*sessions.Session); ok {
+	if s, ok := r.Context().Value(currentSessionKey).(*sessions.Session); ok {
 		return s
 	}
 	return nil
@@ -74,13 +74,6 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if err == nil {
 		return true // saved properly
 	}
-	rerr(r, fmt.Errorf("session save: %w", err))
-	render500(w, r, "Failed to save session")
+	renderErr(w, r, fmt.Errorf("session save: %w", err), "Failed to save session")
 	return false
-}
-
-func redirect(w http.ResponseWriter, r *http.Request, url string) {
-	if saveSession(w, r) {
-		http.Redirect(w, r, url, http.StatusFound)
-	}
 }

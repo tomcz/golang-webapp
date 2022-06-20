@@ -32,16 +32,14 @@ func render(w http.ResponseWriter, r *http.Request, data renderData, templatePat
 	}
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
-		rerr(r, fmt.Errorf("template new: %w", err))
-		render500(w, r, "Failed to create template")
+		renderErr(w, r, fmt.Errorf("template new: %w", err), "Failed to create template")
 		return
 	}
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
-		rerr(r, fmt.Errorf("template exec: %w", err))
-		render500(w, r, "Failed to execute template")
+		renderErr(w, r, fmt.Errorf("template exec: %w", err), "Failed to execute template")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

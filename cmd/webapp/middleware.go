@@ -1,10 +1,7 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"net/http"
-	"runtime/debug"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,11 +10,6 @@ import (
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
-)
-
-const (
-	reqIdKey = "req_id"
-	reqMdKey = "req_md"
 )
 
 func withMiddleware(h http.Handler, log logrus.FieldLogger, isDev bool) http.Handler {
@@ -43,10 +35,7 @@ func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 		reqID := uuid.New().String()
 
 		ww := negroni.NewResponseWriter(w)
-		ctx := context.WithValue(r.Context(), reqIdKey, reqID)
-		ctx = context.WithValue(ctx, reqMdKey, fields)
-
-		next.ServeHTTP(ww, r.WithContext(ctx))
+		next.ServeHTTP(ww, setup(r, reqID, fields))
 		duration := time.Since(start)
 
 		fields["req_id"] = reqID
@@ -71,20 +60,6 @@ func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 	})
 }
 
-func panicRecovery(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if p := recover(); p != nil {
-				stack := string(debug.Stack())
-				rset(r, "panic_stack", stack)
-				rerr(r, fmt.Errorf("panic: %v", p))
-				render500(w, r, "Request failed")
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
-
 func noStoreCacheControl(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
@@ -101,21 +76,4 @@ func setCurrentRouteName(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-func rerr(r *http.Request, err error) {
-	rset(r, "err", err)
-}
-
-func rset(r *http.Request, key string, value any) {
-	if md, ok := r.Context().Value(reqMdKey).(logrus.Fields); ok {
-		md[key] = value
-	}
-}
-
-func render500(w http.ResponseWriter, r *http.Request, msg string) {
-	if id, ok := r.Context().Value(reqIdKey).(string); ok {
-		msg = fmt.Sprintf("ID: %s\nError: %s\n", id, msg)
-	}
-	http.Error(w, msg, http.StatusInternalServerError)
 }
