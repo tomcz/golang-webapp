@@ -7,11 +7,9 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
-const sessionKey = "session"
+const currentSessionKey = contextKey("current.session")
 
 type sessionStore struct {
 	store sessions.Store
@@ -46,13 +44,13 @@ func (s *sessionStore) wrap(fn http.HandlerFunc) http.HandlerFunc {
 		// We're ignoring the error resulted from decoding an existing session
 		// since Get() always returns a session, even if empty.
 		session, _ := s.store.Get(r, s.name)
-		ctx := context.WithValue(r.Context(), sessionKey, session)
+		ctx := context.WithValue(r.Context(), currentSessionKey, session)
 		fn(w, r.WithContext(ctx))
 	}
 }
 
 func getSession(r *http.Request) *sessions.Session {
-	if s, ok := r.Context().Value(sessionKey).(*sessions.Session); ok {
+	if s, ok := r.Context().Value(currentSessionKey).(*sessions.Session); ok {
 		return s
 	}
 	return nil
@@ -77,13 +75,4 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	}
 	renderError(w, r, err, "failed to save session")
 	return false
-}
-
-func redirect(w http.ResponseWriter, r *http.Request, url string) {
-	if saveSession(w, r) {
-		span := trace.SpanFromContext(r.Context())
-		// https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#http-request-and-response-headers
-		span.SetAttributes(attribute.String("http.response.header.location", url))
-		http.Redirect(w, r, url, http.StatusFound)
-	}
 }

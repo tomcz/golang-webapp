@@ -1,21 +1,19 @@
 package main
 
 import (
-	"context"
-	"encoding/hex"
-	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/securecookie"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// prevent conflict with other
+// similarly-named context keys
+type contextKey string
 
 func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	sm := secure.New(secure.Options{
@@ -34,31 +32,6 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 	// and we want to capture all panics and circuit breaker actions, so we're
 	// using the otelhttp handler and not otel's gorilla/mux middleware.
 	return otelhttp.NewHandler(h, "handler")
-}
-
-func panicRecovery(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if p := recover(); p != nil {
-				var err error
-				if e, ok := p.(error); ok {
-					err = fmt.Errorf("panic: %w", e)
-				} else {
-					err = fmt.Errorf("panic: %v", p)
-				}
-				errID := newErrorID()
-				span := trace.SpanFromContext(r.Context())
-				span.RecordError(err,
-					trace.WithStackTrace(true),
-					trace.WithAttributes(attribute.String("err_id", errID)),
-					trace.WithAttributes(attribute.String("err_msg", "recovered from panic")),
-				)
-				msg := fmt.Sprintf("[%s] request failed", errID)
-				http.Error(w, msg, http.StatusInternalServerError)
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
 }
 
 func noStoreCacheControl(next http.Handler) http.Handler {
@@ -90,51 +63,4 @@ func setCurrentRouteAttributes(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-const currentRouterKey = "current.router"
-
-func setRouter(router *mux.Router) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), currentRouterKey, router)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-func redirectToRoute(w http.ResponseWriter, r *http.Request, routeName string, pathVars ...string) {
-	router, ok := r.Context().Value(currentRouterKey).(*mux.Router)
-	if !ok {
-		err := fmt.Errorf("%s not in context", currentRouterKey)
-		renderError(w, r, err, "cannot create redirect")
-		return
-	}
-	url, err := router.Get(routeName).URL(pathVars...)
-	if err != nil {
-		renderError(w, r, err, "cannot create redirect")
-		return
-	}
-	redirect(w, r, url.String())
-}
-
-func renderError(w http.ResponseWriter, r *http.Request, err error, msg string) {
-	errID := recordError(r, err, msg)
-	message := fmt.Sprintf("[%s] %s", errID, msg)
-	http.Error(w, message, http.StatusInternalServerError)
-}
-
-func recordError(r *http.Request, err error, msg string) string {
-	errID := newErrorID()
-	span := trace.SpanFromContext(r.Context())
-	span.RecordError(err,
-		trace.WithAttributes(attribute.String("err_id", errID)),
-		trace.WithAttributes(attribute.String("err_msg", msg)),
-	)
-	return errID
-}
-
-func newErrorID() string {
-	// unique-enough, short, and unambigious, error reference for users to notify us
-	return strings.ToUpper(hex.EncodeToString(securecookie.GenerateRandomKey(4)))
 }
