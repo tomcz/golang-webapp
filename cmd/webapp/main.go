@@ -146,17 +146,17 @@ func newTraceProvider(w io.Writer) (*trace.TracerProvider, error) {
 	), nil
 }
 
-func closeWithTimeout(src string, fn func(context.Context) error) {
+func closeWithTimeout(component string, fn func(context.Context) error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	if err := fn(ctx); err != nil {
-		log.WithError(err).WithField("src", src).Error("unclean close")
+		log.WithError(err).WithField("component", component).Error("unclean close")
 	}
 }
 
-func closeCleanly(src string, fn func() error) {
+func closeCleanly(component string, fn func() error) {
 	if err := fn(); err != nil {
-		log.WithError(err).WithField("src", src).Error("unclean close")
+		log.WithError(err).WithField("component", component).Error("unclean close")
 	}
 }
