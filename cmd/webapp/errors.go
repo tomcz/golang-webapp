@@ -28,6 +28,7 @@ func panicRecovery(next http.Handler) http.Handler {
 					trace.WithAttributes(attribute.String("err_id", errID)),
 					trace.WithAttributes(attribute.String("err_msg", "recovered from panic")),
 				)
+				logError(r, span, errID, err, "recovered from panic")
 				msg := fmt.Sprintf("[%s] request failed", errID)
 				http.Error(w, msg, http.StatusInternalServerError)
 			}
@@ -49,7 +50,19 @@ func recordError(r *http.Request, err error, msg string) string {
 		trace.WithAttributes(attribute.String("err_id", errID)),
 		trace.WithAttributes(attribute.String("err_msg", msg)),
 	)
+	logError(r, span, errID, err, msg)
 	return errID
+}
+
+func logError(r *http.Request, span trace.Span, errID string, err error, msg string) {
+	ctx := span.SpanContext()
+	log.WithError(err).
+		WithField("err_id", errID).
+		WithField("req_method", r.Method).
+		WithField("req_path", r.URL.Path).
+		WithField("trace_id", ctx.TraceID()).
+		WithField("span_id", ctx.SpanID()).
+		Warn(msg)
 }
 
 func newErrorID() string {
