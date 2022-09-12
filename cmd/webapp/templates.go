@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -86,7 +86,7 @@ func readTemplate(path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s open failed: %w", path, err)
 	}
 	defer in.Close()
-	buf, err := ioutil.ReadAll(in)
+	buf, err := io	.ReadAll(in)
 	if err != nil {
 		return nil, fmt.Errorf("%s read failed: %w", path, err)
 	}

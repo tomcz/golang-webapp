@@ -2,7 +2,7 @@ GITCOMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 LDFLAGS := -s -w -X github.com/tomcz/golang-webapp/build.commit=${GITCOMMIT}
 
 .PHONY: all
-all: clean format build-prod
+all: clean format lint build-prod
 
 .PHONY: clean
 clean:
@@ -13,7 +13,17 @@ target:
 
 .PHONY: format
 format:
+ifeq (, $(shell which goimports))
+	go install golang.org/x/tools/cmd/goimports@latest
+endif
 	goimports -w -local github.com/tomcz/golang-webapp .
+
+.PHONY: lint
+lint:
+ifeq (, $(shell which staticcheck))
+	go install honnef.co/go/tools/cmd/staticcheck@latest
+endif
+	staticcheck ./...
 
 .PHONY: build-dev
 build-dev: target
