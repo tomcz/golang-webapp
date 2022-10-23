@@ -21,7 +21,7 @@ func newHandler(s *sessionStore) http.Handler {
 	rs.HandleFunc("/index", showIndex).Methods("GET").Name("showIndex")
 	rs.HandleFunc("/index", updateIndex).Methods("POST").Name("updateIndex")
 	rs.HandleFunc("/test/{name}", testName).Methods("GET").Name("testName")
-	rs.Use(s.wrap)
+	rs.Use(s.wrapHandler)
 
 	r.Use(setRouter(r), noStoreCacheControl, setCurrentRouteAttributes)
 	return r
