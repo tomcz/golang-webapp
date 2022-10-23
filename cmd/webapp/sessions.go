@@ -39,14 +39,14 @@ func keyToBytes(key string) []byte {
 	return buf
 }
 
-func (s *sessionStore) wrap(fn http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (s *sessionStore) wrap(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// We're ignoring the error resulted from decoding an existing session
 		// since Get() always returns a session, even if empty.
 		session, _ := s.store.Get(r, s.name)
 		ctx := context.WithValue(r.Context(), currentSessionKey, session)
-		fn(w, r.WithContext(ctx))
-	}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func getSession(r *http.Request) *sessions.Session {
