@@ -39,11 +39,7 @@ func keyToBytes(key string) []byte {
 	return buf
 }
 
-func (s *sessionStore) wrapHandler(next http.Handler) http.Handler {
-	return s.wrapFunc(next.ServeHTTP)
-}
-
-func (s *sessionStore) wrapFunc(fn http.HandlerFunc) http.HandlerFunc {
+func (s *sessionStore) wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// We're ignoring the error resulted from decoding an existing session
 		// since Get() always returns a session, even if empty.
