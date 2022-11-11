@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 
@@ -26,7 +27,10 @@ func newSessionStore(sessionName, authKey, encKey string) *sessionStore {
 
 func keyToBytes(key string) []byte {
 	if key != "" {
-		buf := []byte(key)
+		buf, err := base64.StdEncoding.DecodeString(key)
+		if err != nil {
+			buf = []byte(key)
+		}
 		if len(buf) == 32 {
 			return buf
 		}
