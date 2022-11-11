@@ -16,11 +16,9 @@ func newHandler(s *sessionStore) http.Handler {
 	r.HandleFunc("/panic", examplePanic).Methods("GET").Name("examplePanic")
 
 	// with session
-	rs := r.NewRoute().Subrouter()
-	rs.HandleFunc("/index", showIndex).Methods("GET").Name("showIndex")
-	rs.HandleFunc("/index", updateIndex).Methods("POST").Name("updateIndex")
-	rs.HandleFunc("/test/{name}", testName).Methods("GET").Name("testName")
-	rs.Use(s.wrapHandler)
+	r.HandleFunc("/index", s.wrap(showIndex)).Methods("GET").Name("showIndex")
+	r.HandleFunc("/index", s.wrap(updateIndex)).Methods("POST").Name("updateIndex")
+	r.HandleFunc("/test/{name}", s.wrap(testName)).Methods("GET").Name("testName")
 
 	r.Use(setRouter(r), noStoreCacheControl, setCurrentRouteName)
 	return r
