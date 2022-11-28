@@ -13,6 +13,8 @@ import (
 
 	oll "github.com/bombsimon/logrusr/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/tomcz/gotools/errgroup"
+	"github.com/tomcz/gotools/quiet"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -20,10 +22,11 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/build"
 )
+
+const quietTimeout = 100 * time.Millisecond
 
 var (
 	env string
@@ -60,7 +63,7 @@ func realMain() error {
 	if err != nil {
 		return fmt.Errorf("failed to create %s: %w", traceFile, err)
 	}
-	defer closeCleanly(traceFile, fp.Close)
+	defer quiet.Close(fp)
 
 	log.WithField("file", traceFile).Info("otel traces will be written to a file")
 
@@ -68,7 +71,7 @@ func realMain() error {
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
-	defer closeWithTimeout("trace provider", tp.Shutdown)
+	defer quiet.CloseWithTimeout(tp.Shutdown, quietTimeout)
 
 	otel.SetLogger(oll.New(log.WithField("component", "otel")))
 	otel.SetTracerProvider(tp)
@@ -106,7 +109,7 @@ func realMain() error {
 		select {
 		case <-signalChan:
 			log.Info("shutdown received")
-			closeWithTimeout("server", server.Shutdown)
+			quiet.CloseWithTimeout(server.Shutdown, quietTimeout)
 			return nil
 		case <-ctx.Done():
 			return nil
@@ -144,19 +147,4 @@ func newTraceProvider(w io.Writer) (*trace.TracerProvider, error) {
 		trace.WithResource(tr),
 		trace.WithBatcher(tw),
 	), nil
-}
-
-func closeWithTimeout(component string, fn func(context.Context) error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-
-	if err := fn(ctx); err != nil {
-		log.WithError(err).WithField("component", component).Error("unclean close")
-	}
-}
-
-func closeCleanly(component string, fn func() error) {
-	if err := fn(); err != nil {
-		log.WithError(err).WithField("component", component).Error("unclean close")
-	}
 }
