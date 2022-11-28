@@ -7,9 +7,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
+	"github.com/tomcz/gotools/errgroup"
+	"github.com/tomcz/gotools/quiet"
 
 	"github.com/tomcz/golang-webapp/build"
 )
@@ -55,7 +57,8 @@ func main() {
 		select {
 		case <-signalChan:
 			log.Info("shutdown received")
-			return server.Shutdown(context.Background())
+			quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
+			return nil
 		case <-ctx.Done():
 			return nil
 		}
