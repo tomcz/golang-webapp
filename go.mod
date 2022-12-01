@@ -10,7 +10,7 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/sirupsen/logrus v1.8.1
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
-	github.com/tomcz/gotools v0.2.9
+	github.com/tomcz/gotools v0.2.10
 	github.com/unrolled/secure v1.10.0
 	github.com/urfave/negroni v1.0.0
 )
