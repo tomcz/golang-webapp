@@ -10,37 +10,47 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/tomcz/gotools/env"
 	"github.com/tomcz/gotools/errgroup"
 	"github.com/tomcz/gotools/quiet"
 
 	"github.com/tomcz/golang-webapp/build"
 )
 
+type appConfig struct {
+	Addr        string `mapstructure:"LISTEN_ADDR"`
+	CookieAuth  string `mapstructure:"COOKIE_AUTH_KEY"`
+	CookieEnc   string `mapstructure:"COOKIE_ENC_KEY"`
+	CookieName  string `mapstructure:"COOKIE_NAME"`
+	TlsCertFile string `mapstructure:"TLS_CERT_FILE"`
+	TlsKeyFile  string `mapstructure:"TLS_KEY_FILE"`
+	Environment string `mapstructure:"ENV"`
+}
+
 func main() {
-	env := osLookupEnv("ENV", "dev")
-	addr := osLookupEnv("LISTEN_ADDR", ":3000")
-	cookieAuth := osLookupEnv("COOKIE_AUTH_KEY", "")
-	cookieEnc := osLookupEnv("COOKIE_ENC_KEY", "")
-	cookieName := osLookupEnv("COOKIE_NAME", "example")
-	tlsCertFile := osLookupEnv("TLS_CERT_FILE", "")
-	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
+	log := logrus.WithField("build", build.Version())
 
-	log := logrus.WithFields(logrus.Fields{
-		"build": build.Version(),
-		"env":   env,
-	})
+	cfg := appConfig{
+		Addr:        ":3000",
+		CookieName:  "example",
+		Environment: "development",
+	}
+	if err := env.PopulateFromEnv(&cfg); err != nil {
+		log.WithError(err).Fatalln("configuration failed")
+	}
 
-	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := withMiddleware(newHandler(session), log, env == "dev")
-	server := &http.Server{Addr: addr, Handler: handler}
+	log = log.WithField("env", cfg.Environment)
+	session := newSessionStore(cfg.CookieName, cfg.CookieAuth, cfg.CookieEnc)
+	handler := withMiddleware(newHandler(session), log, cfg.Environment == "development")
+	server := &http.Server{Addr: cfg.Addr, Handler: handler}
 
 	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
 		var err error
-		ll := log.WithField("addr", addr)
-		if tlsCertFile != "" && tlsKeyFile != "" {
+		ll := log.WithField("addr", cfg.Addr)
+		if cfg.TlsCertFile != "" && cfg.TlsKeyFile != "" {
 			ll.Info("starting server with TLS")
-			err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
+			err = server.ListenAndServeTLS(cfg.TlsCertFile, cfg.TlsKeyFile)
 		} else {
 			ll.Info("starting server without TLS")
 			err = server.ListenAndServe()
@@ -67,11 +77,4 @@ func main() {
 		log.WithError(err).Fatalln("application failed")
 	}
 	log.Info("application stopped")
-}
-
-func osLookupEnv(key, defaultValue string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return defaultValue
 }
