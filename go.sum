@@ -40,8 +40,8 @@ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UV
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.1 h1:5TQK59W5E3v0r2duFAb7P95B6hEeOyEnHRa8MjYSMTY=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
-github.com/tomcz/gotools v0.2.10 h1:cMk4U6hh3FQP3QXM5/dun8ZZEAeOsC6IUxWb3eRF8b8=
-github.com/tomcz/gotools v0.2.10/go.mod h1:cHHMuqkdx7EqedpdDfHAvwVSHv6wC2CfSvf0H6XQ1O8=
+github.com/tomcz/gotools v0.2.11 h1:WL8OEuuZpVFh2+AJrF4sgmLX9WfRHU7Ss2M6kklF+S8=
+github.com/tomcz/gotools v0.2.11/go.mod h1:cHHMuqkdx7EqedpdDfHAvwVSHv6wC2CfSvf0H6XQ1O8=
 github.com/unrolled/secure v1.10.0 h1:TBNP42z2AB+2pW9PR6vdbqhlQuv1iTeSVzK1qHjOBzA=
 github.com/unrolled/secure v1.10.0/go.mod h1:BmF5hyM6tXczk3MpQkFf1hpKSRqCyhqcbiQtiAF7+40=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.31.0 h1:woM+Mb4d0A+Dxa3rYPenSN5ZeS9qHUvE8rlObiLRXTY=
