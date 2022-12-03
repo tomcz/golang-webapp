@@ -13,6 +13,7 @@ import (
 
 	oll "github.com/bombsimon/logrusr/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/tomcz/gotools/env"
 	"github.com/tomcz/gotools/errgroup"
 	"github.com/tomcz/gotools/quiet"
 	"go.opentelemetry.io/otel"
@@ -28,17 +29,10 @@ import (
 
 const quietTimeout = 100 * time.Millisecond
 
-var (
-	env string
-	log logrus.FieldLogger
-)
+var log logrus.FieldLogger
 
 func init() {
-	env = osLookupEnv("ENV", "dev")
-	log = logrus.WithFields(logrus.Fields{
-		"build": build.Version(),
-		"env":   env,
-	})
+	log = logrus.WithField("build", build.Version())
 }
 
 func main() {
@@ -48,26 +42,40 @@ func main() {
 	log.Info("application stopped")
 }
 
-func realMain() error {
-	addr := osLookupEnv("LISTEN_ADDR", ":3000")
-	cookieAuth := osLookupEnv("COOKIE_AUTH_KEY", "")
-	cookieEnc := osLookupEnv("COOKIE_ENC_KEY", "")
-	cookieName := osLookupEnv("COOKIE_NAME", "example")
-	tlsCertFile := osLookupEnv("TLS_CERT_FILE", "")
-	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
-	traceFile := osLookupEnv("TRACE_LOG_FILE", "target/traces.jsonl")
+type appConfig struct {
+	Addr        string `mapstructure:"LISTEN_ADDR"`
+	CookieAuth  string `mapstructure:"COOKIE_AUTH_KEY"`
+	CookieEnc   string `mapstructure:"COOKIE_ENC_KEY"`
+	CookieName  string `mapstructure:"COOKIE_NAME"`
+	TlsCertFile string `mapstructure:"TLS_CERT_FILE"`
+	TlsKeyFile  string `mapstructure:"TLS_KEY_FILE"`
+	TraceFile   string `mapstructure:"TRACE_LOG_FILE"`
+	Environment string `mapstructure:"ENV"`
+}
 
+func realMain() error {
+	cfg := appConfig{
+		Addr:        ":3000",
+		CookieName:  "example",
+		TraceFile:   "target/traces.jsonl",
+		Environment: "development",
+	}
+	if err := env.PopulateFromEnv(&cfg); err != nil {
+		return fmt.Errorf("configuration error: %w", err)
+	}
+
+	log = log.WithField("env", cfg.Environment)
 	log.Info("starting application")
 
-	fp, err := os.Create(traceFile)
+	fp, err := os.Create(cfg.TraceFile)
 	if err != nil {
-		return fmt.Errorf("failed to create %s: %w", traceFile, err)
+		return fmt.Errorf("failed to create %s: %w", cfg.TraceFile, err)
 	}
 	defer quiet.Close(fp)
 
-	log.WithField("file", traceFile).Info("otel traces will be written to a file")
+	log.WithField("file", cfg.TraceFile).Info("otel traces will be written to a file")
 
-	tp, err := newTraceProvider(fp)
+	tp, err := newTraceProvider(fp, cfg.Environment)
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
@@ -82,17 +90,17 @@ func realMain() error {
 		),
 	)
 
-	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := withMiddleware(newHandler(session), env == "dev")
-	server := &http.Server{Addr: addr, Handler: handler}
+	session := newSessionStore(cfg.CookieName, cfg.CookieAuth, cfg.CookieEnc)
+	handler := withMiddleware(newHandler(session), cfg.Environment == "development")
+	server := &http.Server{Addr: cfg.Addr, Handler: handler}
 
 	group, ctx := errgroup.WithContext(context.Background())
 	group.Go(func() error {
 		var ex error
-		ll := log.WithField("addr", addr)
-		if tlsCertFile != "" && tlsKeyFile != "" {
+		ll := log.WithField("addr", cfg.Addr)
+		if cfg.TlsCertFile != "" && cfg.TlsKeyFile != "" {
 			ll.Info("starting server with TLS")
-			ex = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
+			ex = server.ListenAndServeTLS(cfg.TlsCertFile, cfg.TlsKeyFile)
 		} else {
 			ll.Info("starting server without TLS")
 			ex = server.ListenAndServe()
@@ -118,14 +126,7 @@ func realMain() error {
 	return group.Wait()
 }
 
-func osLookupEnv(key, defaultValue string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return defaultValue
-}
-
-func newTraceProvider(w io.Writer) (*trace.TracerProvider, error) {
+func newTraceProvider(w io.Writer, environment string) (*trace.TracerProvider, error) {
 	tw, err := stdouttrace.New(stdouttrace.WithWriter(w))
 	if err != nil {
 		return nil, err
@@ -136,7 +137,7 @@ func newTraceProvider(w io.Writer) (*trace.TracerProvider, error) {
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String("golang-webapp"),
 			semconv.ServiceVersionKey.String(build.Version()),
-			attribute.String("environment", env),
+			attribute.String("environment", environment),
 		),
 	)
 	if err != nil {
