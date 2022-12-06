@@ -94,7 +94,7 @@ func realMain() error {
 	handler := withMiddleware(newHandler(session), cfg.Environment == "development")
 	server := &http.Server{Addr: cfg.Addr, Handler: handler}
 
-	group, ctx := errgroup.WithContext(context.Background())
+	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
 		var ex error
 		ll := log.WithField("addr", cfg.Addr)
