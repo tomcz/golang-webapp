@@ -46,20 +46,13 @@ func main() {
 
 	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
-		var err error
 		ll := log.WithField("addr", cfg.Addr)
 		if cfg.TlsCertFile != "" && cfg.TlsKeyFile != "" {
 			ll.Info("starting server with TLS")
-			err = server.ListenAndServeTLS(cfg.TlsCertFile, cfg.TlsKeyFile)
-		} else {
-			ll.Info("starting server without TLS")
-			err = server.ListenAndServe()
+			return server.ListenAndServeTLS(cfg.TlsCertFile, cfg.TlsKeyFile)
 		}
-		if errors.Is(err, http.ErrServerClosed) {
-			ll.Info("server stopped")
-			return nil
-		}
-		return err
+		ll.Info("starting server without TLS")
+		return server.ListenAndServe()
 	})
 	group.Go(func() error {
 		signalChan := make(chan os.Signal, 1)
@@ -70,11 +63,13 @@ func main() {
 			quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
 			return nil
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		}
 	})
 	if err := group.Wait(); err != nil {
-		log.WithError(err).Fatalln("application failed")
+		if !errors.Is(err, http.ErrServerClosed) {
+			log.WithError(err).Fatalln("application failed")
+		}
 	}
 	log.Info("application stopped")
 }
