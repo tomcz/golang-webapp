@@ -96,20 +96,13 @@ func realMain() error {
 
 	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
-		var ex error
 		ll := log.WithField("addr", cfg.Addr)
 		if cfg.TlsCertFile != "" && cfg.TlsKeyFile != "" {
 			ll.Info("starting server with TLS")
-			ex = server.ListenAndServeTLS(cfg.TlsCertFile, cfg.TlsKeyFile)
-		} else {
-			ll.Info("starting server without TLS")
-			ex = server.ListenAndServe()
+			return server.ListenAndServeTLS(cfg.TlsCertFile, cfg.TlsKeyFile)
 		}
-		if errors.Is(ex, http.ErrServerClosed) {
-			ll.Info("server stopped")
-			return nil
-		}
-		return ex
+		ll.Info("starting server without TLS")
+		return server.ListenAndServe()
 	})
 	group.Go(func() error {
 		signalChan := make(chan os.Signal, 1)
@@ -120,10 +113,14 @@ func realMain() error {
 			quiet.CloseWithTimeout(server.Shutdown, quietTimeout)
 			return nil
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		}
 	})
-	return group.Wait()
+	err = group.Wait()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }
 
 func newTraceProvider(w io.Writer, environment string) (*trace.TracerProvider, error) {
