@@ -44,7 +44,7 @@ func main() {
 	handler := withMiddleware(newHandler(session), log, cfg.Environment == "development")
 	server := &http.Server{Addr: cfg.Addr, Handler: handler}
 
-	group, ctx := errgroup.WithContext(context.Background())
+	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
 		var err error
 		ll := log.WithField("addr", cfg.Addr)
