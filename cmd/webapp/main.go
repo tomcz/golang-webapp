@@ -13,7 +13,6 @@ import (
 
 	oll "github.com/bombsimon/logrusr/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/tomcz/gotools/env"
 	"github.com/tomcz/gotools/errgroup"
 	"github.com/tomcz/gotools/quiet"
 	"go.opentelemetry.io/otel"
@@ -27,12 +26,27 @@ import (
 	"github.com/tomcz/golang-webapp/build"
 )
 
-const quietTimeout = 100 * time.Millisecond
+const (
+	development  = "development"
+	quietTimeout = 100 * time.Millisecond
+)
 
-var log logrus.FieldLogger
+var (
+	env string
+	log logrus.FieldLogger
+)
 
 func init() {
-	log = logrus.WithField("build", build.Version())
+	env = getenv("ENV", development)
+	if env == development {
+		logrus.SetFormatter(&logrus.TextFormatter{})
+	} else {
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+	}
+	log = logrus.WithFields(logrus.Fields{
+		"build": build.Version(),
+		"env":   env,
+	})
 }
 
 func main() {
@@ -42,40 +56,26 @@ func main() {
 	log.Info("application stopped")
 }
 
-type appConfig struct {
-	Addr        string `mapstructure:"LISTEN_ADDR"`
-	CookieAuth  string `mapstructure:"COOKIE_AUTH_KEY"`
-	CookieEnc   string `mapstructure:"COOKIE_ENC_KEY"`
-	CookieName  string `mapstructure:"COOKIE_NAME"`
-	TlsCertFile string `mapstructure:"TLS_CERT_FILE"`
-	TlsKeyFile  string `mapstructure:"TLS_KEY_FILE"`
-	TraceFile   string `mapstructure:"TRACE_LOG_FILE"`
-	Environment string `mapstructure:"ENV"`
-}
-
 func realMain() error {
-	cfg := appConfig{
-		Addr:        ":3000",
-		CookieName:  "example",
-		TraceFile:   "target/traces.jsonl",
-		Environment: "development",
-	}
-	if err := env.PopulateFromEnv(&cfg); err != nil {
-		return fmt.Errorf("configuration error: %w", err)
-	}
-
-	log = log.WithField("env", cfg.Environment)
 	log.Info("starting application")
 
-	fp, err := os.Create(cfg.TraceFile)
+	addr := getenv("LISTEN_ADDR", ":3000")
+	cookieAuth := getenv("COOKIE_AUTH_KEY", "")
+	cookieEnc := getenv("COOKIE_ENC_KEY", "")
+	cookieName := getenv("COOKIE_NAME", "example")
+	tlsCertFile := getenv("TLS_CERT_FILE", "")
+	tlsKeyFile := getenv("TLS_KEY_FILE", "")
+	traceFile := getenv("TRACE_LOG_FILE", "target/traces.jsonl")
+
+	fp, err := os.Create(traceFile)
 	if err != nil {
-		return fmt.Errorf("failed to create %s: %w", cfg.TraceFile, err)
+		return fmt.Errorf("failed to create %s: %w", traceFile, err)
 	}
 	defer quiet.Close(fp)
 
-	log.WithField("file", cfg.TraceFile).Info("otel traces will be written to a file")
+	log.WithField("file", traceFile).Info("otel traces will be written to a file")
 
-	tp, err := newTraceProvider(fp, cfg.Environment)
+	tp, err := newTraceProvider(fp, env)
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
@@ -90,16 +90,16 @@ func realMain() error {
 		),
 	)
 
-	session := newSessionStore(cfg.CookieName, cfg.CookieAuth, cfg.CookieEnc)
-	handler := withMiddleware(newHandler(session), cfg.Environment == "development")
-	server := &http.Server{Addr: cfg.Addr, Handler: handler}
+	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
+	handler := withMiddleware(newHandler(session), env == development)
+	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
-		ll := log.WithField("addr", cfg.Addr)
-		if cfg.TlsCertFile != "" && cfg.TlsKeyFile != "" {
+		ll := log.WithField("addr", addr)
+		if tlsCertFile != "" && tlsKeyFile != "" {
 			ll.Info("starting server with TLS")
-			return server.ListenAndServeTLS(cfg.TlsCertFile, cfg.TlsKeyFile)
+			return server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		}
 		ll.Info("starting server without TLS")
 		return server.ListenAndServe()
@@ -113,11 +113,11 @@ func realMain() error {
 			quiet.CloseWithTimeout(server.Shutdown, quietTimeout)
 			return nil
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		}
 	})
 	err = group.Wait()
-	if errors.Is(err, http.ErrServerClosed) {
+	if err != nil && errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
 	return err
@@ -145,4 +145,12 @@ func newTraceProvider(w io.Writer, environment string) (*trace.TracerProvider, e
 		trace.WithResource(tr),
 		trace.WithBatcher(tw),
 	), nil
+}
+
+func getenv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value != "" {
+		return value
+	}
+	return defaultValue
 }
