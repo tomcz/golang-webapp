@@ -16,7 +16,6 @@ require (
 )
 
 require (
-	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 )

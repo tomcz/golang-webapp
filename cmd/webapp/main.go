@@ -21,7 +21,7 @@ const development = "development"
 var env string
 
 func init() {
-	env = osLookupEnv("ENV", development)
+	env = getenv("ENV", development)
 	if env == development {
 		logrus.SetFormatter(&logrus.TextFormatter{})
 	} else {
@@ -41,12 +41,12 @@ func main() {
 }
 
 func realMain(log logrus.FieldLogger) error {
-	addr := osLookupEnv("LISTEN_ADDR", ":3000")
-	cookieAuth := osLookupEnv("COOKIE_AUTH_KEY", "")
-	cookieEnc := osLookupEnv("COOKIE_ENC_KEY", "")
-	cookieName := osLookupEnv("COOKIE_NAME", "example")
-	tlsCertFile := osLookupEnv("TLS_CERT_FILE", "")
-	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
+	addr := getenv("LISTEN_ADDR", ":3000")
+	cookieAuth := getenv("COOKIE_AUTH_KEY", "")
+	cookieEnc := getenv("COOKIE_ENC_KEY", "")
+	cookieName := getenv("COOKIE_NAME", "example")
+	tlsCertFile := getenv("TLS_CERT_FILE", "")
+	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 
 	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
 	handler := withMiddleware(newHandler(session), log, env == development)
@@ -81,8 +81,9 @@ func realMain(log logrus.FieldLogger) error {
 	return err
 }
 
-func osLookupEnv(key, defaultValue string) string {
-	if value, ok := os.LookupEnv(key); ok {
+func getenv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value != "" {
 		return value
 	}
 	return defaultValue
