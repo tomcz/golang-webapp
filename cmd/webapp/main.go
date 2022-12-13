@@ -10,46 +10,54 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/tomcz/gotools/env"
 	"github.com/tomcz/gotools/errgroup"
 	"github.com/tomcz/gotools/quiet"
 
 	"github.com/tomcz/golang-webapp/build"
 )
 
-type appConfig struct {
-	Addr        string `mapstructure:"LISTEN_ADDR"`
-	CookieAuth  string `mapstructure:"COOKIE_AUTH_KEY"`
-	CookieEnc   string `mapstructure:"COOKIE_ENC_KEY"`
-	CookieName  string `mapstructure:"COOKIE_NAME"`
-	TlsCertFile string `mapstructure:"TLS_CERT_FILE"`
-	TlsKeyFile  string `mapstructure:"TLS_KEY_FILE"`
-	Environment string `mapstructure:"ENV"`
+const development = "development"
+
+var env string
+
+func init() {
+	env = osLookupEnv("ENV", development)
+	if env == development {
+		logrus.SetFormatter(&logrus.TextFormatter{})
+	} else {
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+	}
 }
 
 func main() {
-	log := logrus.WithField("build", build.Version())
-
-	cfg := appConfig{
-		Addr:        ":3000",
-		CookieName:  "example",
-		Environment: "development",
+	log := logrus.WithFields(logrus.Fields{
+		"build": build.Version(),
+		"env":   env,
+	})
+	if err := realMain(log); err != nil {
+		log.WithError(err).Fatalln("application failed")
 	}
-	if err := env.PopulateFromEnv(&cfg); err != nil {
-		log.WithError(err).Fatalln("configuration failed")
-	}
+	log.Info("application stopped")
+}
 
-	log = log.WithField("env", cfg.Environment)
-	session := newSessionStore(cfg.CookieName, cfg.CookieAuth, cfg.CookieEnc)
-	handler := withMiddleware(newHandler(session), log, cfg.Environment == "development")
-	server := &http.Server{Addr: cfg.Addr, Handler: handler}
+func realMain(log logrus.FieldLogger) error {
+	addr := osLookupEnv("LISTEN_ADDR", ":3000")
+	cookieAuth := osLookupEnv("COOKIE_AUTH_KEY", "")
+	cookieEnc := osLookupEnv("COOKIE_ENC_KEY", "")
+	cookieName := osLookupEnv("COOKIE_NAME", "example")
+	tlsCertFile := osLookupEnv("TLS_CERT_FILE", "")
+	tlsKeyFile := osLookupEnv("TLS_KEY_FILE", "")
+
+	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
+	handler := withMiddleware(newHandler(session), log, env == development)
+	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
-		ll := log.WithField("addr", cfg.Addr)
-		if cfg.TlsCertFile != "" && cfg.TlsKeyFile != "" {
+		ll := log.WithField("addr", addr)
+		if tlsCertFile != "" && tlsKeyFile != "" {
 			ll.Info("starting server with TLS")
-			return server.ListenAndServeTLS(cfg.TlsCertFile, cfg.TlsKeyFile)
+			return server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		}
 		ll.Info("starting server without TLS")
 		return server.ListenAndServe()
@@ -63,13 +71,19 @@ func main() {
 			quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
 			return nil
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		}
 	})
-	if err := group.Wait(); err != nil {
-		if !errors.Is(err, http.ErrServerClosed) {
-			log.WithError(err).Fatalln("application failed")
-		}
+	err := group.Wait()
+	if err != nil && errors.Is(err, http.ErrServerClosed) {
+		return nil
 	}
-	log.Info("application stopped")
+	return err
+}
+
+func osLookupEnv(key, defaultValue string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return defaultValue
 }
