@@ -18,7 +18,10 @@ import (
 
 const development = "development"
 
-var env string
+var (
+	env string
+	log logrus.FieldLogger
+)
 
 func init() {
 	env = getenv("ENV", development)
@@ -27,20 +30,20 @@ func init() {
 	} else {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
-}
-
-func main() {
-	log := logrus.WithFields(logrus.Fields{
+	log = logrus.WithFields(logrus.Fields{
 		"build": build.Version(),
 		"env":   env,
 	})
-	if err := realMain(log); err != nil {
+}
+
+func main() {
+	if err := realMain(); err != nil {
 		log.WithError(err).Fatalln("application failed")
 	}
 	log.Info("application stopped")
 }
 
-func realMain(log logrus.FieldLogger) error {
+func realMain() error {
 	addr := getenv("LISTEN_ADDR", ":3000")
 	cookieAuth := getenv("COOKIE_AUTH_KEY", "")
 	cookieEnc := getenv("COOKIE_ENC_KEY", "")
@@ -49,7 +52,7 @@ func realMain(log logrus.FieldLogger) error {
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 
 	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := withMiddleware(newHandler(session), log, env == development)
+	handler := withMiddleware(newHandler(session))
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())
