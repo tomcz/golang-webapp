@@ -75,7 +75,7 @@ func realMain() error {
 
 	log.WithField("file", traceFile).Info("otel traces will be written to a file")
 
-	tp, err := newTraceProvider(fp, env)
+	tp, err := newTraceProvider(fp)
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
@@ -91,7 +91,7 @@ func realMain() error {
 	)
 
 	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := withMiddleware(newHandler(session), env == development)
+	handler := withMiddleware(newHandler(session))
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())
@@ -123,7 +123,7 @@ func realMain() error {
 	return err
 }
 
-func newTraceProvider(w io.Writer, environment string) (*trace.TracerProvider, error) {
+func newTraceProvider(w io.Writer) (*trace.TracerProvider, error) {
 	tw, err := stdouttrace.New(stdouttrace.WithWriter(w))
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func newTraceProvider(w io.Writer, environment string) (*trace.TracerProvider, e
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String("golang-webapp"),
 			semconv.ServiceVersionKey.String(build.Version()),
-			attribute.String("environment", environment),
+			attribute.String("environment", env),
 		),
 	)
 	if err != nil {

@@ -15,7 +15,7 @@ import (
 // similarly-named context keys
 type contextKey string
 
-func withMiddleware(h http.Handler, isDev bool) http.Handler {
+func withMiddleware(h http.Handler) http.Handler {
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
 		FrameDeny:            true,
@@ -23,7 +23,7 @@ func withMiddleware(h http.Handler, isDev bool) http.Handler {
 		ReferrerPolicy:       "no-referrer",
 		SSLRedirect:          true,
 		SSLTemporaryRedirect: true,
-		IsDevelopment:        isDev,
+		IsDevelopment:        env == development,
 	})
 	h = sm.Handler(h)
 	h = panicRecovery(h)
