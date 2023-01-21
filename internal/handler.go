@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func newHandler(s *sessionStore) http.Handler {
+func NewHandler(s *SessionStore) http.Handler {
 	r := mux.NewRouter()
 	registerStaticAssetRoutes(r)
 

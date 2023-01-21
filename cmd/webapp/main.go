@@ -24,6 +24,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 
 	"github.com/tomcz/golang-webapp/build"
+	"github.com/tomcz/golang-webapp/internal"
 )
 
 const (
@@ -90,8 +91,8 @@ func realMain() error {
 		),
 	)
 
-	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := withMiddleware(newHandler(session))
+	session := internal.NewSessionStore(cookieName, cookieAuth, cookieEnc)
+	handler := internal.WithMiddleware(internal.NewHandler(session), env == development, log)
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())

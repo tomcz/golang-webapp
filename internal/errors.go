@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"encoding/hex"
@@ -56,7 +56,7 @@ func recordError(r *http.Request, err error, msg string) string {
 
 func logError(r *http.Request, span trace.Span, errID string, err error, msg string) {
 	ctx := span.SpanContext()
-	log.WithError(err).
+	getLogger(r).WithError(err).
 		WithField("err_id", errID).
 		WithField("req_method", r.Method).
 		WithField("req_path", r.URL.Path).
