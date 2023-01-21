@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"context"
@@ -13,13 +13,13 @@ import (
 
 const currentSessionKey = contextKey("current.session")
 
-type sessionStore struct {
+type SessionStore struct {
 	store sessions.Store
 	name  string
 }
 
-func newSessionStore(sessionName, authKey, encKey string) *sessionStore {
-	return &sessionStore{
+func NewSessionStore(sessionName, authKey, encKey string) *SessionStore {
+	return &SessionStore{
 		store: sessions.NewCookieStore(keyToBytes(authKey), keyToBytes(encKey)),
 		name:  sessionName,
 	}
@@ -44,7 +44,7 @@ func keyToBytes(key string) []byte {
 	return buf
 }
 
-func (s *sessionStore) wrap(fn http.HandlerFunc) http.HandlerFunc {
+func (s *SessionStore) wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// We're ignoring the error resulted from decoding an existing session
 		// since Get() always returns a session, even if empty.

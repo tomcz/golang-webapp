@@ -14,6 +14,7 @@ import (
 	"github.com/tomcz/gotools/quiet"
 
 	"github.com/tomcz/golang-webapp/build"
+	"github.com/tomcz/golang-webapp/internal"
 )
 
 const development = "development"
@@ -31,8 +32,9 @@ func init() {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
 	log = logrus.WithFields(logrus.Fields{
-		"build": build.Version(),
-		"env":   env,
+		"component": "main",
+		"build":     build.Version(),
+		"env":       env,
 	})
 }
 
@@ -51,8 +53,8 @@ func realMain() error {
 	tlsCertFile := getenv("TLS_CERT_FILE", "")
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 
-	session := newSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := withMiddleware(newHandler(session))
+	session := internal.NewSessionStore(cookieName, cookieAuth, cookieEnc)
+	handler := internal.WithMiddleware(internal.NewHandler(session), log, env == development)
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())

@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"net/http"
@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/negroni"
 )
 
-func withMiddleware(h http.Handler) http.Handler {
+func WithMiddleware(h http.Handler, log logrus.FieldLogger, isDevEnv bool) http.Handler {
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
 		FrameDeny:            true,
@@ -20,15 +20,15 @@ func withMiddleware(h http.Handler) http.Handler {
 		ReferrerPolicy:       "no-referrer",
 		SSLRedirect:          true,
 		SSLTemporaryRedirect: true,
-		IsDevelopment:        env == development,
+		IsDevelopment:        isDevEnv,
 	})
 	h = sm.Handler(h)
 	h = panicRecovery(h)
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
-	return requestLogger(h)
+	return requestLogger(h, log.WithField("component", "middleware"))
 }
 
-func requestLogger(next http.Handler) http.Handler {
+func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		fields := logrus.Fields{}
