@@ -45,8 +45,9 @@ func init() {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
 	log = logrus.WithFields(logrus.Fields{
-		"build": build.Version(),
-		"env":   env,
+		"component": "main",
+		"build":     build.Version(),
+		"env":       env,
 	})
 }
 
