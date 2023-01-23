@@ -68,6 +68,7 @@ func realMain() error {
 	tlsCertFile := getenv("TLS_CERT_FILE", "")
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 	traceFile := getenv("TRACE_LOG_FILE", "target/traces.jsonl")
+	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
 	fp, err := os.Create(traceFile)
 	if err != nil {
@@ -93,13 +94,13 @@ func realMain() error {
 	)
 
 	session := internal.NewSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := internal.WithMiddleware(internal.NewHandler(session), env == development, log)
+	handler := internal.WithMiddleware(internal.NewHandler(session), withTLS, log)
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
 		ll := log.WithField("addr", addr)
-		if tlsCertFile != "" && tlsKeyFile != "" {
+		if withTLS {
 			ll.Info("starting server with TLS")
 			return server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		}
