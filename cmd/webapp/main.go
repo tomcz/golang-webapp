@@ -52,15 +52,16 @@ func realMain() error {
 	cookieName := getenv("COOKIE_NAME", "example")
 	tlsCertFile := getenv("TLS_CERT_FILE", "")
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
+	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
 	session := internal.NewSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := internal.WithMiddleware(internal.NewHandler(session), log, env == development)
+	handler := internal.WithMiddleware(internal.NewHandler(session), log, withTLS)
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
 		ll := log.WithField("addr", addr)
-		if tlsCertFile != "" && tlsKeyFile != "" {
+		if withTLS {
 			ll.Info("starting server with TLS")
 			return server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
 		}

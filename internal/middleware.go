@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/negroni"
 )
 
-func WithMiddleware(h http.Handler, log logrus.FieldLogger, isDevEnv bool) http.Handler {
+func WithMiddleware(h http.Handler, log logrus.FieldLogger, withTLS bool) http.Handler {
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
 		FrameDeny:            true,
@@ -20,7 +20,7 @@ func WithMiddleware(h http.Handler, log logrus.FieldLogger, isDevEnv bool) http.
 		ReferrerPolicy:       "no-referrer",
 		SSLRedirect:          true,
 		SSLTemporaryRedirect: true,
-		IsDevelopment:        isDevEnv,
+		IsDevelopment:        withTLS, // don't enable production settings without TLS
 	})
 	h = sm.Handler(h)
 	h = panicRecovery(h)
