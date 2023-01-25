@@ -1,4 +1,4 @@
-package internal
+package webapp
 
 import (
 	"net/http"

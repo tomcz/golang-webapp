@@ -1,4 +1,4 @@
-package internal
+package webapp
 
 import (
 	"fmt"
@@ -24,29 +24,27 @@ var bufPool = bpool.NewBufferPool(48)
 var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
-type renderData map[string]any
-
-func render(w http.ResponseWriter, r *http.Request, data renderData, templatePaths ...string) {
+func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templatePaths ...string) {
 	if !saveSession(w, r) {
 		return
 	}
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
-		renderError(w, r, err, "failed to create template")
+		RenderError(w, r, err, "failed to create template")
 		return
 	}
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
-		renderError(w, r, err, "failed to execute template")
+		RenderError(w, r, err, "failed to execute template")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		recordError(r, err, "failed to write template")
+		RecordError(r, err, "failed to write template")
 	}
 }
 

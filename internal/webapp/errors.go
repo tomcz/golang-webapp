@@ -1,4 +1,4 @@
-package internal
+package webapp
 
 import (
 	"encoding/hex"
@@ -37,13 +37,13 @@ func panicRecovery(next http.Handler) http.Handler {
 	})
 }
 
-func renderError(w http.ResponseWriter, r *http.Request, err error, msg string) {
-	errID := recordError(r, err, msg)
+func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string) {
+	errID := RecordError(r, err, msg)
 	message := fmt.Sprintf("[%s] %s", errID, msg)
 	http.Error(w, message, http.StatusInternalServerError)
 }
 
-func recordError(r *http.Request, err error, msg string) string {
+func RecordError(r *http.Request, err error, msg string) string {
 	errID := newErrorID()
 	span := trace.SpanFromContext(r.Context())
 	span.RecordError(err,
