@@ -14,7 +14,8 @@ import (
 	"github.com/tomcz/gotools/quiet"
 
 	"github.com/tomcz/golang-webapp/build"
-	"github.com/tomcz/golang-webapp/internal"
+	"github.com/tomcz/golang-webapp/internal/webapp"
+	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
 )
 
 const development = "development"
@@ -54,8 +55,8 @@ func realMain() error {
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
-	session := internal.NewSessionStore(cookieName, cookieAuth, cookieEnc)
-	handler := internal.WithMiddleware(internal.NewHandler(session), log, withTLS)
+	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc)
+	handler := webapp.WithMiddleware(handlers.NewHandler(session), log, withTLS)
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())

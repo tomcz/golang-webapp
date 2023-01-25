@@ -1,4 +1,4 @@
-package internal
+package webapp
 
 import (
 	"context"
@@ -14,7 +14,7 @@ const (
 	currentMetadataKey  = contextKey("current.metadata")
 )
 
-func setup(r *http.Request, requestID string, md logrus.Fields) *http.Request {
+func setupContext(r *http.Request, requestID string, md logrus.Fields) *http.Request {
 	ctx := context.WithValue(r.Context(), currentRequestIdKey, requestID)
 	ctx = context.WithValue(ctx, currentMetadataKey, md)
 	return r.WithContext(ctx)
@@ -31,4 +31,8 @@ func rset(r *http.Request, key string, value any) {
 	if md, ok := r.Context().Value(currentMetadataKey).(logrus.Fields); ok {
 		md[key] = value
 	}
+}
+
+func rerr(r *http.Request, err error) {
+	rset(r, "err", err)
 }

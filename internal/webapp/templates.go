@@ -1,4 +1,4 @@
-package internal
+package webapp
 
 import (
 	"fmt"
@@ -24,22 +24,32 @@ var bufPool = bpool.NewBufferPool(48)
 var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
-type renderData map[string]any
+func RenderErr(w http.ResponseWriter, r *http.Request, err error, msg string) {
+	rerr(r, err)
+	Render500(w, r, msg)
+}
 
-func render(w http.ResponseWriter, r *http.Request, data renderData, templatePaths ...string) {
+func Render500(w http.ResponseWriter, r *http.Request, msg string) {
+	if id := rid(r); id != "" {
+		msg = fmt.Sprintf("ID: %s\nError: %s\n", id, msg)
+	}
+	http.Error(w, msg, http.StatusInternalServerError)
+}
+
+func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templatePaths ...string) {
 	if !saveSession(w, r) {
 		return
 	}
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
-		renderErr(w, r, fmt.Errorf("template new: %w", err), "Failed to create template")
+		RenderErr(w, r, fmt.Errorf("template new: %w", err), "Failed to create template")
 		return
 	}
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
-		renderErr(w, r, fmt.Errorf("template exec: %w", err), "Failed to execute template")
+		RenderErr(w, r, fmt.Errorf("template exec: %w", err), "Failed to execute template")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

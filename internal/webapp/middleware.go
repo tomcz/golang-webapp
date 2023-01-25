@@ -1,11 +1,12 @@
-package internal
+package webapp
 
 import (
+	"fmt"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
@@ -28,14 +29,31 @@ func WithMiddleware(h http.Handler, log logrus.FieldLogger, withTLS bool) http.H
 	return requestLogger(h, log.WithField("component", "middleware"))
 }
 
+func panicRecovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if p := recover(); p != nil {
+				stack := string(debug.Stack())
+				rset(r, "panic_stack", stack)
+				rerr(r, fmt.Errorf("panic: %v", p))
+				Render500(w, r, "Request failed")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
 func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+
 		fields := logrus.Fields{}
 		reqID := uuid.New().String()
-
+		rr := setupContext(r, reqID, fields)
 		ww := negroni.NewResponseWriter(w)
-		next.ServeHTTP(ww, setup(r, reqID, fields))
+
+		next.ServeHTTP(ww, rr)
+
 		duration := time.Since(start)
 
 		fields["req_id"] = reqID
@@ -57,23 +75,5 @@ func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 			fields["res_location"] = loc
 		}
 		log.WithFields(fields).Info("request finished")
-	})
-}
-
-func noStoreCacheControl(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		next.ServeHTTP(w, r)
-	})
-}
-
-func setCurrentRouteName(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if route := mux.CurrentRoute(r); route != nil {
-			if name := route.GetName(); name != "" {
-				rset(r, "req_route", name)
-			}
-		}
-		next.ServeHTTP(w, r)
 	})
 }
