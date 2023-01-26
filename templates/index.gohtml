@@ -1,11 +1,15 @@
 {{- define "body" }}
 <div class="container grid-sm mt-2">
-    <h1>Hello {{ .Name }}</h1>
+    {{ range .Flash }}
+    <div class="toast toast-success">
+        {{ . }}
+    </div>
+    {{ end }}
     <form method="post">
         <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
         <div class="form-group">
             <label class="form-label" for="name">Say hello to:</label>
-            <input class="form-input" id="name" type="text" name="name" value="{{ .Name }}" autofocus>
+            <input class="form-input" id="name" type="text" name="name" required autofocus>
         </div>
         <input type="submit" class="btn btn-primary">
     </form>

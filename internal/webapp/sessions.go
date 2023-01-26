@@ -37,6 +37,7 @@ type Session interface {
 	Get(key string) (any, bool)
 	GetString(key string) string
 	Delete(key string)
+	AddFlash(msg string)
 }
 
 type sessionStore struct {
@@ -150,12 +151,14 @@ func getSession(r *http.Request) *currentSession {
 }
 
 func getSessionData(r *http.Request) map[string]any {
+	data := map[string]any{}
 	s := getSession(r)
 	if s == nil {
-		return nil
+		return data
 	}
+	data["Flash"] = s.session.Flashes()
 	if s.csrf == CsrfDisabled {
-		return nil
+		return data
 	}
 	var csrfToken string
 	if s.csrf == CsrfPerSession {
@@ -165,9 +168,8 @@ func getSessionData(r *http.Request) map[string]any {
 		csrfToken = uuid.New().String()
 		s.Set(csrfSessionValue, csrfToken)
 	}
-	return map[string]any{
-		csrfSessionValue: csrfToken,
-	}
+	data[csrfSessionValue] = csrfToken
+	return data
 }
 
 func saveSession(w http.ResponseWriter, r *http.Request) bool {
@@ -204,4 +206,8 @@ func (c *currentSession) GetString(key string) string {
 
 func (c *currentSession) Delete(key string) {
 	delete(c.session.Values, key)
+}
+
+func (c *currentSession) AddFlash(msg string) {
+	c.session.AddFlash(msg)
 }
