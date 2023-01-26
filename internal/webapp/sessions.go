@@ -38,6 +38,7 @@ type Session interface {
 	GetString(key string) string
 	Delete(key string)
 	AddFlash(msg string)
+	Clear()
 }
 
 type sessionStore struct {
@@ -210,4 +211,14 @@ func (c *currentSession) Delete(key string) {
 
 func (c *currentSession) AddFlash(msg string) {
 	c.session.AddFlash(msg)
+}
+
+func (c *currentSession) Clear() {
+	keys := make([]any, 0, len(c.session.Values))
+	for key := range c.session.Values {
+		keys = append(keys, key)
+	}
+	for _, key := range keys {
+		delete(c.session.Values, key)
+	}
 }
