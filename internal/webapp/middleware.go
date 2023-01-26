@@ -24,7 +24,7 @@ func WithMiddleware(h http.Handler, withTLS bool, log logrus.FieldLogger) http.H
 		ReferrerPolicy:       "no-referrer",
 		SSLRedirect:          true,
 		SSLTemporaryRedirect: true,
-		IsDevelopment:        withTLS, // don't enable production settings without TLS
+		IsDevelopment:        !withTLS, // don't enable production settings without TLS
 	})
 	h = sm.Handler(h)
 	h = panicRecovery(h)

@@ -25,19 +25,25 @@ var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
 func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templatePaths ...string) {
+	if data == nil {
+		data = map[string]any{}
+	}
+	for key, value := range getSessionData(r) {
+		data[key] = value
+	}
 	if !saveSession(w, r) {
 		return
 	}
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
-		RenderError(w, r, err, "failed to create template")
+		RenderError(w, r, err, "failed to create template", http.StatusInternalServerError)
 		return
 	}
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
-		RenderError(w, r, err, "failed to execute template")
+		RenderError(w, r, err, "failed to execute template", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

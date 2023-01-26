@@ -64,12 +64,12 @@ func RedirectTo(w http.ResponseWriter, r *http.Request, routeName string, pathVa
 	router, ok := r.Context().Value(currentRouterKey).(*mux.Router)
 	if !ok {
 		err := fmt.Errorf("%s not in context", currentRouterKey)
-		RenderError(w, r, err, "cannot create redirect")
+		RenderError(w, r, err, "cannot create redirect", http.StatusInternalServerError)
 		return
 	}
 	url, err := router.Get(routeName).URL(pathVars...)
 	if err != nil {
-		RenderError(w, r, err, "cannot create redirect")
+		RenderError(w, r, err, "cannot create redirect", http.StatusInternalServerError)
 		return
 	}
 	Redirect(w, r, url.String())

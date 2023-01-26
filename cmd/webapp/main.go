@@ -94,7 +94,7 @@ func realMain() error {
 		),
 	)
 
-	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc)
+	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc, webapp.CsrfPerRequest)
 	handler := webapp.WithMiddleware(handlers.NewHandler(session), withTLS, log)
 	server := &http.Server{Addr: addr, Handler: handler}
 

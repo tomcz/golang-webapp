@@ -37,10 +37,10 @@ func panicRecovery(next http.Handler) http.Handler {
 	})
 }
 
-func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string) {
+func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	errID := RecordError(r, err, msg)
 	message := fmt.Sprintf("[%s] %s", errID, msg)
-	http.Error(w, message, http.StatusInternalServerError)
+	http.Error(w, message, statusCode)
 }
 
 func RecordError(r *http.Request, err error, msg string) string {
