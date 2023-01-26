@@ -68,7 +68,7 @@ func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 			csrf:    s.csrf,
 		})
 		r = r.WithContext(ctx)
-		if s.csrfOk(w, r) {
+		if s.csrfSafe(w, r) {
 			fn(w, r)
 		}
 	}
@@ -101,10 +101,10 @@ func keyToBytes(key string) []byte {
 	return buf
 }
 
-// according to RFC 7231
+// according to RFC-7231
 var csrfSafeMethods = maps.NewSet("GET", "HEAD", "OPTIONS", "TRACE")
 
-func (s *sessionStore) csrfOk(w http.ResponseWriter, r *http.Request) bool {
+func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	if csrfSafeMethods[r.Method] {
 		return true
 	}
