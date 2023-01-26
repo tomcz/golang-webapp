@@ -21,7 +21,7 @@ func WithMiddleware(h http.Handler, log logrus.FieldLogger, withTLS bool) http.H
 		ReferrerPolicy:       "no-referrer",
 		SSLRedirect:          true,
 		SSLTemporaryRedirect: true,
-		IsDevelopment:        withTLS, // don't enable production settings without TLS
+		IsDevelopment:        !withTLS, // don't enable production settings without TLS
 	})
 	h = sm.Handler(h)
 	h = panicRecovery(h)
@@ -35,8 +35,8 @@ func panicRecovery(next http.Handler) http.Handler {
 			if p := recover(); p != nil {
 				stack := string(debug.Stack())
 				rset(r, "panic_stack", stack)
-				rerr(r, fmt.Errorf("panic: %v", p))
-				Render500(w, r, "Request failed")
+				err := fmt.Errorf("panic: %v", p)
+				RenderErr(w, r, err, "Request failed", http.StatusInternalServerError)
 			}
 		}()
 		next.ServeHTTP(w, r)

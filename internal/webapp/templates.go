@@ -24,32 +24,36 @@ var bufPool = bpool.NewBufferPool(48)
 var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
-func RenderErr(w http.ResponseWriter, r *http.Request, err error, msg string) {
+func RenderErr(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	rerr(r, err)
-	Render500(w, r, msg)
-}
-
-func Render500(w http.ResponseWriter, r *http.Request, msg string) {
 	if id := rid(r); id != "" {
 		msg = fmt.Sprintf("ID: %s\nError: %s\n", id, msg)
 	}
-	http.Error(w, msg, http.StatusInternalServerError)
+	http.Error(w, msg, statusCode)
 }
 
 func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templatePaths ...string) {
+	if data == nil {
+		data = map[string]any{}
+	}
+	for key, value := range getSessionData(r) {
+		data[key] = value
+	}
 	if !saveSession(w, r) {
 		return
 	}
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
-		RenderErr(w, r, fmt.Errorf("template new: %w", err), "Failed to create template")
+		err = fmt.Errorf("template new: %w", err)
+		RenderErr(w, r, err, "Failed to create template", http.StatusInternalServerError)
 		return
 	}
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
-		RenderErr(w, r, fmt.Errorf("template exec: %w", err), "Failed to execute template")
+		err = fmt.Errorf("template exec: %w", err)
+		RenderErr(w, r, err, "Failed to execute template", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

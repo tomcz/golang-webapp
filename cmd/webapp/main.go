@@ -55,7 +55,7 @@ func realMain() error {
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
-	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc)
+	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc, webapp.CsrfPerRequest)
 	handler := webapp.WithMiddleware(handlers.NewHandler(session), log, withTLS)
 	server := &http.Server{Addr: addr, Handler: handler}
 

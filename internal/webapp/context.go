@@ -28,6 +28,9 @@ func rid(r *http.Request) string {
 }
 
 func rset(r *http.Request, key string, value any) {
+	if value == nil {
+		return
+	}
 	if md, ok := r.Context().Value(currentMetadataKey).(logrus.Fields); ok {
 		md[key] = value
 	}

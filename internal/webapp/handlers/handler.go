@@ -26,7 +26,7 @@ func NewHandler(s webapp.SessionStore) http.Handler {
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
 	s := webapp.CurrentSession(r)
-	name, _ := s.GetString("name")
+	name := s.GetString("name")
 	data := map[string]any{"Name": name}
 	webapp.Render(w, r, data, "layout.gohtml", "index.gohtml")
 }
@@ -35,13 +35,13 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 	name := r.PostFormValue("name")
 	if name != "" {
 		s := webapp.CurrentSession(r)
-		s.SetString("name", name)
+		s.Set("name", name)
 	}
 	webapp.RedirectTo(w, r, "showIndex")
 }
 
 func exampleError(w http.ResponseWriter, r *http.Request) {
-	webapp.Render500(w, r, "Example error")
+	webapp.RenderErr(w, r, nil, "Example error", http.StatusInternalServerError)
 }
 
 func examplePanic(http.ResponseWriter, *http.Request) {
@@ -51,6 +51,6 @@ func examplePanic(http.ResponseWriter, *http.Request) {
 func testName(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	s := webapp.CurrentSession(r)
-	s.SetString("name", name)
+	s.Set("name", name)
 	webapp.RedirectTo(w, r, "showIndex")
 }
