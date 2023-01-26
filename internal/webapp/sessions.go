@@ -36,8 +36,8 @@ type Session interface {
 	Set(key string, value any)
 	Get(key string) (any, bool)
 	GetString(key string) string
-	Delete(key string)
 	AddFlash(msg string)
+	Delete(key string)
 	Clear()
 }
 
