@@ -205,12 +205,12 @@ func (c *currentSession) GetString(key string) string {
 	return ""
 }
 
-func (c *currentSession) Delete(key string) {
-	delete(c.session.Values, key)
-}
-
 func (c *currentSession) AddFlash(msg string) {
 	c.session.AddFlash(msg)
+}
+
+func (c *currentSession) Delete(key string) {
+	delete(c.session.Values, key)
 }
 
 func (c *currentSession) Clear() {
