@@ -60,30 +60,6 @@ func NewSessionStore(sessionName, authKey, encKey string, csrf CsrfProtection) S
 	}
 }
 
-func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// We're ignoring the error resulted from decoding an existing session
-		// since Get() always returns a session, even if empty.
-		session, _ := s.store.Get(r, s.name)
-		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{
-			session: session,
-			csrf:    s.csrf,
-		})
-		r = r.WithContext(ctx)
-		if s.csrfSafe(w, r) {
-			fn(w, r)
-		}
-	}
-}
-
-func CurrentSession(r *http.Request) Session {
-	s := getSession(r)
-	if s == nil {
-		panic("no current session; is this handler wrapped?")
-	}
-	return s
-}
-
 func keyToBytes(key string) []byte {
 	if key != "" {
 		buf, err := base64.StdEncoding.DecodeString(key)
@@ -101,6 +77,22 @@ func keyToBytes(key string) []byte {
 		panic("cannot generate random key")
 	}
 	return buf
+}
+
+func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// We're ignoring the error resulted from decoding an existing session
+		// since Get() always returns a session, even if empty.
+		session, _ := s.store.Get(r, s.name)
+		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{
+			session: session,
+			csrf:    s.csrf,
+		})
+		r = r.WithContext(ctx)
+		if s.csrfSafe(w, r) {
+			fn(w, r)
+		}
+	}
 }
 
 // according to RFC-7231
@@ -142,6 +134,14 @@ func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	return true
+}
+
+func CurrentSession(r *http.Request) Session {
+	s := getSession(r)
+	if s == nil {
+		panic("no current session; is this handler wrapped?")
+	}
+	return s
 }
 
 func getSession(r *http.Request) *currentSession {
