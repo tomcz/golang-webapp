@@ -1,10 +1,8 @@
 {{- define "body" }}
 <div class="container grid-sm mt-2">
-    {{ range .Flash }}
-    <div class="toast toast-success">
-        {{ . }}
+    <div class="text-right">
+        <a href="/logout">Logout ({{ .AuthUser }})</a>
     </div>
-    {{ end }}
     <form method="post">
         <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
         <div class="form-group">

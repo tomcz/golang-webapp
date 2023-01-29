@@ -28,6 +28,12 @@ const (
 	CsrfPerSession
 )
 
+const (
+	flashMessageKey = "FlashMessage"
+	flashSuccessKey = "FlashSuccess"
+	flashErrorKey   = "FlashError"
+)
+
 type SessionStore interface {
 	Wrap(fn http.HandlerFunc) http.HandlerFunc
 }
@@ -36,7 +42,9 @@ type Session interface {
 	Set(key string, value any)
 	Get(key string) (any, bool)
 	GetString(key string) string
-	AddFlash(msg string)
+	AddFlashMessage(msg string)
+	AddFlashSuccess(msg string)
+	AddFlashError(msg string)
 	Delete(key string)
 	Clear()
 }
@@ -157,7 +165,9 @@ func getSessionData(r *http.Request) map[string]any {
 	if s == nil {
 		return data
 	}
-	data["Flash"] = s.session.Flashes()
+	data[flashMessageKey] = s.session.Flashes(flashMessageKey)
+	data[flashSuccessKey] = s.session.Flashes(flashSuccessKey)
+	data[flashErrorKey] = s.session.Flashes(flashErrorKey)
 	if s.csrf == CsrfDisabled {
 		return data
 	}
@@ -205,8 +215,16 @@ func (c *currentSession) GetString(key string) string {
 	return ""
 }
 
-func (c *currentSession) AddFlash(msg string) {
-	c.session.AddFlash(msg)
+func (c *currentSession) AddFlashMessage(msg string) {
+	c.session.AddFlash(msg, flashMessageKey)
+}
+
+func (c *currentSession) AddFlashSuccess(msg string) {
+	c.session.AddFlash(msg, flashSuccessKey)
+}
+
+func (c *currentSession) AddFlashError(msg string) {
+	c.session.AddFlash(msg, flashErrorKey)
 }
 
 func (c *currentSession) Delete(key string) {

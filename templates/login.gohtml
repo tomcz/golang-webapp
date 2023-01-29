@@ -1,0 +1,17 @@
+{{- define "body" }}
+<div class="container grid-sm mt-2">
+    <h1>Login</h1>
+    <form method="post">
+        <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
+        <div class="form-group">
+            <label class="form-label" for="username">Username:</label>
+            <input class="form-input" id="username" type="text" name="username" required autofocus>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="password">Password:</label>
+            <input class="form-input" id="password" type="password" name="password" required>
+        </div>
+        <input type="submit" class="btn btn-primary">
+    </form>
+</div>
+{{- end }}

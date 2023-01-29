@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -56,7 +57,7 @@ func realMain() error {
 	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
 	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc, webapp.CsrfPerRequest)
-	handler := webapp.WithMiddleware(handlers.NewHandler(session), log, withTLS)
+	handler := webapp.WithMiddleware(handlers.NewHandler(session, getKnownUsers()), log, withTLS)
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())
@@ -86,6 +87,22 @@ func realMain() error {
 		return nil
 	}
 	return err
+}
+
+func getKnownUsers() map[string]string {
+	value := getenv("KNOWN_USERS", "")
+	if value == "" {
+		return nil
+	}
+	knownUsers := map[string]string{}
+	for _, token := range strings.Split(value, ",") {
+		tuple := strings.SplitN(token, ":", 2)
+		if len(tuple) != 2 {
+			continue
+		}
+		knownUsers[tuple[0]] = tuple[1]
+	}
+	return knownUsers
 }
 
 func getenv(key, defaultValue string) string {

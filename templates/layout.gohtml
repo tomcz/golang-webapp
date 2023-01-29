@@ -9,9 +9,43 @@
     <link rel="stylesheet" href="/static/css/spectre.min.css">
     <link rel="stylesheet" href="/static/css/spectre-exp.min.css">
     <link rel="stylesheet" href="/static/css/spectre-icons.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.3.min.js"
+            integrity="sha256-pvPw+upLPUjgMXY0G+8O0xUf+/Im1MZjXxxgOcBQBXU="
+            crossorigin="anonymous"></script>
+    <script src="/static/js/main.js" defer></script>
     {{- template "head" .}}
 </head>
 <body>
+{{ if .FlashError }}
+<div class="container grid-sm mt-2">
+    {{ range .FlashError }}
+    <div class="toast toast-error">
+        <button class="btn btn-clear float-right"></button>
+        {{ . }}
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+{{ if .FlashSuccess }}
+<div class="container grid-sm mt-2">
+    {{ range .FlashSuccess }}
+    <div class="toast toast-success">
+        <button class="btn btn-clear float-right"></button>
+        {{ . }}
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+{{ if .FlashMessage }}
+<div class="container grid-sm mt-2">
+    {{ range .FlashMessage }}
+    <div class="toast toast-primary">
+        <button class="btn btn-clear float-right"></button>
+        {{ . }}
+    </div>
+    {{ end }}
+</div>
+{{ end }}
 {{ template "body" .}}
 </body>
 </html>

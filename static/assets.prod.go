@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+//go:embed js/*
 //go:embed css/*
 var content embed.FS
 
