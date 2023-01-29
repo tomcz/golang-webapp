@@ -43,13 +43,13 @@ func handleLogin(knownUsers map[string]string) http.HandlerFunc {
 		password := strings.TrimSpace(r.PostFormValue("password"))
 		expected, ok := knownUsers[username]
 		if !ok {
-			webapp.RSet(r, "err", fmt.Sprintf("unknown user %q", username))
+			webapp.RSet(r, "auth_error", fmt.Sprintf("unknown user %q", username))
 			s.AddFlashError("Invalid credentials. Please try again.")
 			webapp.RedirectTo(w, r, "showLogin")
 			return
 		}
 		if subtle.ConstantTimeCompare([]byte(password), []byte(expected)) == 0 {
-			webapp.RSet(r, "err", fmt.Sprintf("invalid password for user %q", username))
+			webapp.RSet(r, "auth_error", fmt.Sprintf("invalid password for user %q", username))
 			s.AddFlashError("Invalid credentials. Please try again.")
 			webapp.RedirectTo(w, r, "showLogin")
 			return
