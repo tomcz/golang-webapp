@@ -6,11 +6,9 @@
     <div class="col-md-auto">
       <form method="post" class="row row-cols-lg-auto g-3 align-items-center">
         <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
-        <div class="col-12">
-          <div class="form-floating">
-            <input class="form-control" id="name" type="text" name="name" placeholder="Say hello to" required autofocus>
-            <label for="name">Say hello to</label>
-          </div>
+        <div class="col-12 form-floating">
+          <input class="form-control" id="name" type="text" name="name" placeholder="Say hello to" required autofocus>
+          <label for="name">Say hello to</label>
         </div>
         <div class="col-12">
           <input type="submit" class="btn btn-primary" value="Hello">
