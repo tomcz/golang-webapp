@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -77,9 +76,8 @@ func RedirectTo(w http.ResponseWriter, r *http.Request, routeName string, pathVa
 
 func Redirect(w http.ResponseWriter, r *http.Request, url string) {
 	if saveSession(w, r) {
-		span := trace.SpanFromContext(r.Context())
 		// https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#http-request-and-response-headers
-		span.SetAttributes(attribute.String("http.response.header.location", url))
+		AddToSpan(r, "http.response.header.location", url)
 		http.Redirect(w, r, url, http.StatusFound)
 	}
 }

@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
 )
 
-func NewHandler(s webapp.SessionStore) http.Handler {
+func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handler {
 	r := webapp.NewRouter()
 
 	// no session
@@ -16,30 +14,14 @@ func NewHandler(s webapp.SessionStore) http.Handler {
 	r.HandleFunc("/error", exampleError).Methods("GET").Name("exampleError")
 	r.HandleFunc("/panic", examplePanic).Methods("GET").Name("examplePanic")
 
-	// with session
-	r.HandleFunc("/index", s.Wrap(showIndex)).Methods("GET").Name("showIndex")
-	r.HandleFunc("/index", s.Wrap(updateIndex)).Methods("POST").Name("updateIndex")
+	// unauthenticated
+	r.HandleFunc("/login", s.Wrap(showLogin)).Methods("GET").Name("showLogin")
+	r.HandleFunc("/login", s.Wrap(handleLogin(knownUsers))).Methods("POST").Name("handleLogin")
+	r.HandleFunc("/logout", s.Wrap(handleLogout)).Methods("GET", "POST").Name("handleLogout")
+
+	// authenticated
+	r.HandleFunc("/index", private(s, showIndex)).Methods("GET").Name("showIndex")
+	r.HandleFunc("/index", private(s, updateIndex)).Methods("POST").Name("updateIndex")
 
 	return r
-}
-
-func showIndex(w http.ResponseWriter, r *http.Request) {
-	webapp.Render(w, r, nil, "layout.gohtml", "index.gohtml")
-}
-
-func updateIndex(w http.ResponseWriter, r *http.Request) {
-	name := r.PostFormValue("name")
-	if name != "" {
-		s := webapp.CurrentSession(r)
-		s.AddFlash(fmt.Sprintf("Hello %s", name))
-	}
-	webapp.RedirectTo(w, r, "showIndex")
-}
-
-func exampleError(w http.ResponseWriter, r *http.Request) {
-	webapp.RenderError(w, r, errors.New("wibble"), "example error", http.StatusInternalServerError)
-}
-
-func examplePanic(http.ResponseWriter, *http.Request) {
-	panic("wobble")
 }

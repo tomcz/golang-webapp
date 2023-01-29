@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -95,7 +96,7 @@ func realMain() error {
 	)
 
 	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc, webapp.CsrfPerRequest)
-	handler := webapp.WithMiddleware(handlers.NewHandler(session), withTLS, log)
+	handler := webapp.WithMiddleware(handlers.NewHandler(session, getKnownUsers()), withTLS, log)
 	server := &http.Server{Addr: addr, Handler: handler}
 
 	group, ctx := errgroup.NewContext(context.Background())
@@ -149,6 +150,22 @@ func newTraceProvider(w io.Writer) (*trace.TracerProvider, error) {
 		trace.WithResource(tr),
 		trace.WithBatcher(tw),
 	), nil
+}
+
+func getKnownUsers() map[string]string {
+	value := getenv("KNOWN_USERS", "")
+	if value == "" {
+		return nil
+	}
+	knownUsers := map[string]string{}
+	for _, token := range strings.Split(value, ",") {
+		tuple := strings.SplitN(token, ":", 2)
+		if len(tuple) != 2 {
+			continue
+		}
+		knownUsers[tuple[0]] = tuple[1]
+	}
+	return knownUsers
 }
 
 func getenv(key, defaultValue string) string {

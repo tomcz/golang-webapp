@@ -8,6 +8,8 @@ import (
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // prevent conflict with other
@@ -34,6 +36,11 @@ func WithMiddleware(h http.Handler, withTLS bool, log logrus.FieldLogger) http.H
 	// and we want to capture all panics and circuit breaker actions, so we're
 	// using the otelhttp handler and not otel's gorilla/mux middleware.
 	return otelhttp.NewHandler(h, "handler")
+}
+
+func AddToSpan(r *http.Request, key, value string) {
+	span := trace.SpanFromContext(r.Context())
+	span.SetAttributes(attribute.String(key, value))
 }
 
 func setLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
