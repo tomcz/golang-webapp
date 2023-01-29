@@ -30,7 +30,7 @@ func setCurrentRouteName(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if route := mux.CurrentRoute(r); route != nil {
 			if name := route.GetName(); name != "" {
-				rset(r, "req_route", name)
+				RSet(r, "req_route", name)
 			}
 		}
 		next.ServeHTTP(w, r)

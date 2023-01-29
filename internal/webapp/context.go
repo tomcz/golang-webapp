@@ -27,7 +27,7 @@ func rid(r *http.Request) string {
 	return ""
 }
 
-func rset(r *http.Request, key string, value any) {
+func RSet(r *http.Request, key string, value any) {
 	if value == nil {
 		return
 	}
@@ -36,6 +36,6 @@ func rset(r *http.Request, key string, value any) {
 	}
 }
 
-func rerr(r *http.Request, err error) {
-	rset(r, "err", err)
+func RErr(r *http.Request, err error) {
+	RSet(r, "err", err)
 }

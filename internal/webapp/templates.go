@@ -25,7 +25,7 @@ var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
 func RenderErr(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
-	rerr(r, err)
+	RErr(r, err)
 	if id := rid(r); id != "" {
 		msg = fmt.Sprintf("ID: %s\nError: %s\n", id, msg)
 	}
@@ -60,7 +60,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	w.WriteHeader(http.StatusOK)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		rerr(r, fmt.Errorf("template write: %w", err))
+		RErr(r, fmt.Errorf("template write: %w", err))
 	}
 }
 
