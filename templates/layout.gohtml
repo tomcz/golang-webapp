@@ -26,6 +26,16 @@
     {{ end }}
 </div>
 {{ end }}
+{{ if .FlashWarning }}
+<div class="container grid-sm mt-2">
+    {{ range .FlashWarning }}
+    <div class="toast toast-warning">
+        <button class="btn btn-clear float-right"></button>
+        {{ . }}
+    </div>
+    {{ end }}
+</div>
+{{ end }}
 {{ if .FlashSuccess }}
 <div class="container grid-sm mt-2">
     {{ range .FlashSuccess }}
