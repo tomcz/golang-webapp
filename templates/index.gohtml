@@ -1,15 +1,21 @@
 {{- define "body" }}
-<div class="container grid-sm mt-2">
-    <div class="text-right">
-        <a href="/logout">Logout ({{ .AuthUser }})</a>
-    </div>
-    <form method="post">
+  <div class="text-end mb-2">
+    <a href="/logout">Logout ({{ .AuthUser }})</a>
+  </div>
+  <div class="row justify-content-md-center">
+    <div class="col-md-auto">
+      <form method="post" class="row row-cols-lg-auto g-3 align-items-center">
         <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
-        <div class="form-group">
-            <label class="form-label" for="name">Say hello to:</label>
-            <input class="form-input" id="name" type="text" name="name" required autofocus>
+        <div class="col-12">
+          <div class="form-floating">
+            <input class="form-control" id="name" type="text" name="name" placeholder="Say hello to" required autofocus>
+            <label for="name">Say hello to</label>
+          </div>
         </div>
-        <input type="submit" class="btn btn-primary">
-    </form>
-</div>
+        <div class="col-12">
+          <input type="submit" class="btn btn-primary" value="Hello">
+        </div>
+      </form>
+    </div>
+  </div>
 {{- end }}
