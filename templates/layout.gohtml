@@ -2,61 +2,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>golang-webapp</title>
-    <link rel="stylesheet" href="/static/css/spectre.min.css">
-    <link rel="stylesheet" href="/static/css/spectre-exp.min.css">
-    <link rel="stylesheet" href="/static/css/spectre-icons.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.3.min.js"
-            integrity="sha256-pvPw+upLPUjgMXY0G+8O0xUf+/Im1MZjXxxgOcBQBXU="
-            crossorigin="anonymous"></script>
-    <script src="/static/js/main.js" defer></script>
-    {{- template "head" .}}
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>golang-webapp</title>
+  <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+  <script src="/static/js/bootstrap.bundle.min.js" defer></script>
+  {{- template "head" .}}
 </head>
 <body>
-{{ if .FlashError }}
-<div class="container grid-sm mt-2">
-    {{ range .FlashError }}
-    <div class="toast toast-error">
-        <button class="btn btn-clear float-right"></button>
-        {{ . }}
-    </div>
-    {{ end }}
-</div>
-{{ end }}
-{{ if .FlashWarning }}
-<div class="container grid-sm mt-2">
-    {{ range .FlashWarning }}
-    <div class="toast toast-warning">
-        <button class="btn btn-clear float-right"></button>
-        {{ . }}
-    </div>
-    {{ end }}
-</div>
-{{ end }}
-{{ if .FlashSuccess }}
-<div class="container grid-sm mt-2">
-    {{ range .FlashSuccess }}
-    <div class="toast toast-success">
-        <button class="btn btn-clear float-right"></button>
-        {{ . }}
-    </div>
-    {{ end }}
-</div>
-{{ end }}
-{{ if .FlashMessage }}
-<div class="container grid-sm mt-2">
-    {{ range .FlashMessage }}
-    <div class="toast toast-primary">
-        <button class="btn btn-clear float-right"></button>
-        {{ . }}
-    </div>
-    {{ end }}
-</div>
-{{ end }}
+<div class="container">
+{{ range .FlashError -}}
+  <div class="alert alert-danger alert-dismissible fade show mt-1" role="alert">
+    {{ . }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+{{ end -}}
+{{ range .FlashWarning -}}
+  <div class="alert alert-warning alert-dismissible fade show mt-1" role="alert">
+    {{ . }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+{{ end -}}
+{{ range .FlashSuccess -}}
+  <div class="alert alert-success alert-dismissible fade show mt-1" role="alert">
+    {{ . }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+{{ end -}}
+{{ range .FlashMessage -}}
+  <div class="alert alert-primary alert-dismissible fade show mt-1" role="alert">
+    {{ . }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+{{ end -}}
 {{ template "body" .}}
+</div>
 </body>
 </html>
 {{- end }}
