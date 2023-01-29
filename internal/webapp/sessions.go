@@ -31,6 +31,7 @@ const (
 const (
 	flashMessageKey = "FlashMessage"
 	flashSuccessKey = "FlashSuccess"
+	flashWarningKey = "FlashWarning"
 	flashErrorKey   = "FlashError"
 )
 
@@ -44,6 +45,7 @@ type Session interface {
 	GetString(key string) string
 	AddFlashMessage(msg string)
 	AddFlashSuccess(msg string)
+	AddFlashWarning(msg string)
 	AddFlashError(msg string)
 	Delete(key string)
 	Clear()
@@ -167,6 +169,7 @@ func getSessionData(r *http.Request) map[string]any {
 	}
 	data[flashMessageKey] = s.session.Flashes(flashMessageKey)
 	data[flashSuccessKey] = s.session.Flashes(flashSuccessKey)
+	data[flashWarningKey] = s.session.Flashes(flashWarningKey)
 	data[flashErrorKey] = s.session.Flashes(flashErrorKey)
 	if s.csrf == CsrfDisabled {
 		return data
@@ -220,6 +223,10 @@ func (c *currentSession) AddFlashMessage(msg string) {
 
 func (c *currentSession) AddFlashSuccess(msg string) {
 	c.session.AddFlash(msg, flashSuccessKey)
+}
+
+func (c *currentSession) AddFlashWarning(msg string) {
+	c.session.AddFlash(msg, flashWarningKey)
 }
 
 func (c *currentSession) AddFlashError(msg string) {
