@@ -13,17 +13,11 @@ target:
 
 .PHONY: format
 format:
-ifeq (, $(shell which goimports))
-	go install golang.org/x/tools/cmd/goimports@latest
-endif
 	goimports -w -local github.com/tomcz/golang-webapp .
 
 .PHONY: lint
 lint:
-ifeq (, $(shell which staticcheck))
-	go install honnef.co/go/tools/cmd/staticcheck@latest
-endif
-	staticcheck ./...
+	golangci-lint run
 
 .PHONY: build-dev
 build-dev: target
