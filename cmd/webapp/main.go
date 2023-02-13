@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"net/http"
 	"os"
@@ -58,7 +59,16 @@ func realMain() error {
 
 	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc, webapp.CsrfPerRequest)
 	handler := webapp.WithMiddleware(handlers.NewHandler(session, getKnownUsers()), log, withTLS)
-	server := &http.Server{Addr: addr, Handler: handler}
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: handler,
+		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
+		// to prevent connections from taking resources indefinitely.
+	}
+	if withTLS {
+		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
+	}
 
 	group, ctx := errgroup.NewContext(context.Background())
 	group.Go(func() error {
