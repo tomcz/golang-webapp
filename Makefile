@@ -19,6 +19,10 @@ format:
 lint:
 	golangci-lint run
 
+.PHONY: tidy
+tidy:
+	go mod tidy -compat=1.19
+
 .PHONY: build-dev
 build-dev: target
 	go build -ldflags "${LDFLAGS}" -o target/golang-webapp ./cmd/webapp/...
