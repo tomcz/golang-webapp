@@ -22,8 +22,8 @@ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
-github.com/tomcz/gotools v0.4.1 h1:oAEWoFfkHRYGhJzwTdIIsY9hbiVlBZAi4Iuh6Vi3M/U=
-github.com/tomcz/gotools v0.4.1/go.mod h1:SYLitf1gefAO8soXL4ueN+z5IrkEv18Nb0W2hoOi/+s=
+github.com/tomcz/gotools v0.4.2 h1:bforF32o12uGyJH1sJPMAkI/XeGaGylwk0XC4wKgOf8=
+github.com/tomcz/gotools v0.4.2/go.mod h1:SYLitf1gefAO8soXL4ueN+z5IrkEv18Nb0W2hoOi/+s=
 github.com/unrolled/secure v1.10.0 h1:TBNP42z2AB+2pW9PR6vdbqhlQuv1iTeSVzK1qHjOBzA=
 github.com/unrolled/secure v1.10.0/go.mod h1:BmF5hyM6tXczk3MpQkFf1hpKSRqCyhqcbiQtiAF7+40=
 github.com/urfave/negroni v1.0.0 h1:kIimOitoypq34K7TG7DUaJ9kq/N4Ofuwi1sjz0KipXc=
