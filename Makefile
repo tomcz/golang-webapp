@@ -21,7 +21,7 @@ lint:
 
 .PHONY: tidy
 tidy:
-	go mod tidy -compat=1.19
+	go mod tidy -compat=1.20
 
 .PHONY: build-dev
 build-dev: target
