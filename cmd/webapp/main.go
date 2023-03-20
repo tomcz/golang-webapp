@@ -49,6 +49,7 @@ func main() {
 }
 
 func realMain() error {
+	knownUsers := getenv("KNOWN_USERS", "")
 	addr := getenv("LISTEN_ADDR", ":3000")
 	cookieAuth := getenv("COOKIE_AUTH_KEY", "")
 	cookieEnc := getenv("COOKIE_ENC_KEY", "")
@@ -58,7 +59,7 @@ func realMain() error {
 	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
 	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc, webapp.CsrfPerRequest)
-	handler := webapp.WithMiddleware(handlers.NewHandler(session, getKnownUsers()), log, withTLS)
+	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers(knownUsers)), log, withTLS)
 
 	server := &http.Server{
 		Addr:    addr,
@@ -99,8 +100,7 @@ func realMain() error {
 	return err
 }
 
-func getKnownUsers() map[string]string {
-	value := getenv("KNOWN_USERS", "")
+func parseKnownUsers(value string) map[string]string {
 	if value == "" {
 		return nil
 	}
