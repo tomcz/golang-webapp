@@ -18,5 +18,5 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 		s := webapp.CurrentSession(r)
 		s.AddFlashSuccess(fmt.Sprintf("Hello %s", name))
 	}
-	webapp.RedirectTo(w, r, "showIndex")
+	webapp.Redirect(w, r, "/index")
 }

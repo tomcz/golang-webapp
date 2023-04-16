@@ -29,6 +29,13 @@ func WithMiddleware(h http.Handler, log logrus.FieldLogger, withTLS bool) http.H
 	return requestLogger(h, log.WithField("component", "middleware"))
 }
 
+func WithHandlerName(name string, next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		RSet(r, "req_route", name)
+		next.ServeHTTP(w, r)
+	}
+}
+
 func panicRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -48,7 +55,7 @@ func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 		start := time.Now()
 
 		fields := logrus.Fields{}
-		reqID := uuid.New().String()
+		reqID := uuid.NewString()
 		rr := setupContext(r, reqID, fields)
 		ww := negroni.NewResponseWriter(w)
 
