@@ -103,7 +103,7 @@ func (c *sessionCodec) encode(data map[string]any, expiresAt time.Time) (string,
 }
 
 func (c *sessionCodec) decode(cookieValue string, now time.Time) (map[string]any, error) {
-	tokens := strings.SplitN(cookieValue, ".", 2)
+	tokens := strings.Split(cookieValue, ".")
 	if len(tokens) != 2 {
 		return nil, fmt.Errorf("expected 2 tokens, got %d", len(tokens))
 	}
