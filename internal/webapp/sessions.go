@@ -213,7 +213,7 @@ func (c *currentSession) Get(key string) (any, bool) {
 }
 
 func (c *currentSession) GetString(key string) string {
-	if value, found := c.session[key]; found {
+	if value, found := c.Get(key); found {
 		if txt, ok := value.(string); ok {
 			return txt
 		}
@@ -238,15 +238,16 @@ func (c *currentSession) AddFlashError(msg string) {
 }
 
 func (c *currentSession) addFlash(key, msg string) {
-	c.session[key] = append(c.getFlash(key), msg)
+	c.Set(key, append(c.getFlash(key), msg))
 }
 
 func (c *currentSession) getFlash(key string) []string {
-	var res []string
-	if flash, ok := c.session[key]; ok {
-		res = flash.([]string)
+	if value, found := c.Get(key); found {
+		if flash, ok := value.([]string); ok {
+			return flash
+		}
 	}
-	return res
+	return nil
 }
 
 func (c *currentSession) popFlash(key string) []string {
@@ -261,6 +262,6 @@ func (c *currentSession) Delete(key string) {
 
 func (c *currentSession) Clear() {
 	for _, key := range maps.Keys(c.session) {
-		delete(c.session, key)
+		c.Delete(key)
 	}
 }

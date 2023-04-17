@@ -53,9 +53,9 @@ type sessionCodec struct {
 	path   string
 }
 
-func (c *sessionCodec) setSession(w http.ResponseWriter, r *http.Request, data map[string]any) error {
+func (c *sessionCodec) setSession(w http.ResponseWriter, r *http.Request, session map[string]any) error {
 	expiresAt := time.Now().Add(c.maxAge)
-	value, err := c.encode(data, expiresAt)
+	value, err := c.encode(session, expiresAt)
 	if err != nil {
 		return err
 	}
@@ -80,14 +80,14 @@ func (c *sessionCodec) getSession(r *http.Request) (map[string]any, error) {
 	return c.decode(cookie.Value, time.Now())
 }
 
-func (c *sessionCodec) encode(data map[string]any, expiresAt time.Time) (string, error) {
-	data[sessionExpiresAt] = expiresAt
+func (c *sessionCodec) encode(session map[string]any, expiresAt time.Time) (string, error) {
+	session[sessionExpiresAt] = expiresAt
 	defer func() {
-		delete(data, sessionExpiresAt)
+		delete(session, sessionExpiresAt)
 	}()
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	err := gob.NewEncoder(buf).Encode(data)
+	err := gob.NewEncoder(buf).Encode(session)
 	if err != nil {
 		return "", fmt.Errorf("gob.encode: %w", err)
 	}
@@ -115,12 +115,12 @@ func (c *sessionCodec) decode(cookieValue string, now time.Time) (map[string]any
 	if err != nil {
 		return nil, fmt.Errorf("cipher.decrypt: %w", err)
 	}
-	var result map[string]any
-	err = gob.NewDecoder(bytes.NewReader(plainText)).Decode(&result)
+	var session map[string]any
+	err = gob.NewDecoder(bytes.NewReader(plainText)).Decode(&session)
 	if err != nil {
 		return nil, fmt.Errorf("gob.decode: %w", err)
 	}
-	value, ok := result[sessionExpiresAt]
+	value, ok := session[sessionExpiresAt]
 	if !ok {
 		return nil, fmt.Errorf("no session expiry")
 	}
@@ -131,6 +131,6 @@ func (c *sessionCodec) decode(cookieValue string, now time.Time) (map[string]any
 	if expiresAt.Before(now) {
 		return nil, fmt.Errorf("session expired at %s", expiresAt)
 	}
-	delete(result, sessionExpiresAt)
-	return result, nil
+	delete(session, sessionExpiresAt)
+	return session, nil
 }
