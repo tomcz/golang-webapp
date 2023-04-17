@@ -57,8 +57,8 @@ type Session interface {
 }
 
 type sessionStore struct {
-	codec *sessionCodec
 	csrf  CsrfProtection
+	codec *sessionCodec
 }
 
 type currentSession struct {
@@ -88,8 +88,8 @@ func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 		}
 		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{
 			session: session,
-			codec:   s.codec,
 			csrf:    s.csrf,
+			codec:   s.codec,
 		})
 		r = r.WithContext(ctx)
 		if s.csrfSafe(w, r) {
@@ -99,7 +99,7 @@ func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 }
 
 // according to RFC-7231
-var csrfSafeMethods = maps.NewSet("GET", "HEAD", "OPTIONS", "TRACE")
+var csrfSafeMethods = maps.NewSet(http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace)
 
 func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	if csrfSafeMethods[r.Method] {

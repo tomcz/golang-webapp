@@ -21,10 +21,9 @@ func TestCodecRoundTrip(t *testing.T) {
 	}
 
 	now := time.Now()
-	expiresAt := now.Add(codec.maxAge)
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := codec.encode(data, expiresAt)
+	encoded, err := codec.encode(data, now.Add(codec.maxAge))
 	assert.NilError(t, err)
 
 	decoded, err := codec.decode(encoded, now.Add(time.Hour))
