@@ -16,15 +16,15 @@ func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handle
 
 	// unauthenticated
 	webapp.RegisterMethods(r, "/login", map[string]http.HandlerFunc{
-		"GET":  public(s, "showLogin", showLogin),
-		"POST": public(s, "handleLogin", handleLogin(knownUsers)),
+		http.MethodGet:  public(s, "showLogin", showLogin),
+		http.MethodPost: public(s, "handleLogin", handleLogin(knownUsers)),
 	})
 	webapp.Register(r, "/logout", public(s, "handleLogout", handleLogout))
 
 	// authenticated
 	webapp.RegisterMethods(r, "/index", map[string]http.HandlerFunc{
-		"GET":  private(s, "showIndex", showIndex),
-		"POST": private(s, "updateIndex", updateIndex),
+		http.MethodGet:  private(s, "showIndex", showIndex),
+		http.MethodPost: private(s, "updateIndex", updateIndex),
 	})
 
 	return r
