@@ -54,16 +54,17 @@ func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		fields := logrus.Fields{}
 		reqID := uuid.NewString()
-		rr := setupContext(r, reqID, fields)
+		log = log.WithField("req_id", reqID)
+		fields := logrus.Fields{}
+
+		rr := setupContext(r, reqID, log, fields)
 		ww := negroni.NewResponseWriter(w)
 
 		next.ServeHTTP(ww, rr)
 
 		duration := time.Since(start)
 
-		fields["req_id"] = reqID
 		fields["req_start_at"] = start
 		fields["res_duration_ms"] = duration.Milliseconds()
 		fields["res_duration_ns"] = duration.Nanoseconds()

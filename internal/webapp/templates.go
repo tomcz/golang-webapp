@@ -25,10 +25,8 @@ var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
 func RenderErr(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
-	RErr(r, err)
-	if id := rid(r); id != "" {
-		msg = fmt.Sprintf("ID: %s\nError: %s\n", id, msg)
-	}
+	RSet(r, "err", err)
+	msg = fmt.Sprintf("ID: %s\nError: %s\n", rid(r), msg)
 	http.Error(w, msg, statusCode)
 }
 
@@ -60,7 +58,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	w.WriteHeader(http.StatusOK)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		RErr(r, fmt.Errorf("template write: %w", err))
+		rlog(r).WithError(err).Error("template write")
 	}
 }
 
@@ -100,6 +98,7 @@ func readTemplate(path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s open failed: %w", path, err)
 	}
 	defer in.Close()
+
 	buf, err := io.ReadAll(in)
 	if err != nil {
 		return nil, fmt.Errorf("%s read failed: %w", path, err)
