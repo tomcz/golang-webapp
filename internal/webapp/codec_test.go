@@ -15,7 +15,7 @@ func TestCodecRoundTrip(t *testing.T) {
 
 	codec := &sessionCodec{
 		name:   "test",
-		encKey: key,
+		key:    key,
 		maxAge: 24 * time.Hour,
 		path:   "/",
 	}

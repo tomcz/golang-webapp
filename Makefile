@@ -27,6 +27,10 @@ tidy:
 test:
 	go test ./...
 
+.PHONY: keygen
+keygen:
+	go run ./cmd/keygen/main.go
+
 .PHONY: build-dev
 build-dev: target
 	go build -tags dev -ldflags "${LDFLAGS}" -o target/golang-webapp ./cmd/webapp/...

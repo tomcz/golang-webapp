@@ -57,7 +57,10 @@ func realMain() error {
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
-	session := webapp.NewSessionStore(cookieName, cookieEnc, webapp.CsrfPerRequest)
+	session, err := webapp.NewSessionStore(cookieName, cookieEnc, webapp.CsrfPerRequest)
+	if err != nil {
+		return err
+	}
 	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers(knownUsers)), log, withTLS)
 
 	server := &http.Server{
@@ -92,7 +95,7 @@ func realMain() error {
 			return nil
 		}
 	})
-	err := group.Wait()
+	err = group.Wait()
 	if err != nil && errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}

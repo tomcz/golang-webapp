@@ -67,16 +67,20 @@ type currentSession struct {
 	codec   *sessionCodec
 }
 
-func NewSessionStore(sessionName, encKey string, csrf CsrfProtection) SessionStore {
+func NewSessionStore(sessionName, sessionKey string, csrf CsrfProtection) (SessionStore, error) {
+	keyBytes, err := keyToBytes(sessionKey)
+	if err != nil {
+		return nil, err
+	}
 	return &sessionStore{
 		csrf: csrf,
 		codec: &sessionCodec{
 			name:   sessionName,
-			encKey: keyToBytes(encKey),
+			key:    keyBytes,
 			maxAge: 30 * 24 * time.Hour,
 			path:   "/",
 		},
-	}
+	}, nil
 }
 
 func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {

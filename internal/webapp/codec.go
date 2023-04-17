@@ -3,7 +3,6 @@ package webapp
 import (
 	"bytes"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
@@ -19,29 +18,37 @@ func init() {
 	gob.Register(time.Time{})
 }
 
-func keyToBytes(key string) []byte {
-	if key != "" {
-		buf, err := base64.StdEncoding.DecodeString(key)
-		if err != nil {
-			buf = []byte(key)
-		}
-		if len(buf) == 32 {
-			return buf
-		}
-		sum := sha256.Sum256(buf)
-		return sum[:]
+func RandomKey() (string, error) {
+	buf, err := randomKey()
+	if err != nil {
+		return "", err
 	}
+	return base64.StdEncoding.EncodeToString(buf), nil
+}
+
+func randomKey() ([]byte, error) {
 	buf := make([]byte, 32)
 	_, err := rand.Read(buf)
-	if err != nil {
-		panic(err)
+	return buf, err
+}
+
+func keyToBytes(key string) ([]byte, error) {
+	if key == "" {
+		return randomKey()
 	}
-	return buf
+	buf, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return nil, fmt.Errorf("bad key: %w", err)
+	}
+	if len(buf) != 32 {
+		return nil, fmt.Errorf("expected 32-byte key, got %d bytes", len(buf))
+	}
+	return buf, nil
 }
 
 type sessionCodec struct {
 	name   string
-	encKey []byte
+	key    []byte
 	maxAge time.Duration
 	path   string
 }
@@ -84,7 +91,7 @@ func (c *sessionCodec) encode(data map[string]any, expiresAt time.Time) (string,
 	if err != nil {
 		return "", fmt.Errorf("gob.encode: %w", err)
 	}
-	cipher, err := subtle.NewAESGCMSIV(c.encKey)
+	cipher, err := subtle.NewAESGCMSIV(c.key)
 	if err != nil {
 		return "", fmt.Errorf("cipher.new: %w", err)
 	}
@@ -100,7 +107,7 @@ func (c *sessionCodec) decode(cookieValue string, now time.Time) (map[string]any
 	if err != nil {
 		return nil, fmt.Errorf("cookieValue.decode: %w", err)
 	}
-	cipher, err := subtle.NewAESGCMSIV(c.encKey)
+	cipher, err := subtle.NewAESGCMSIV(c.key)
 	if err != nil {
 		return nil, fmt.Errorf("cipher.new: %w", err)
 	}
