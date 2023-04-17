@@ -83,7 +83,7 @@ func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, err := s.codec.getSession(r)
 		if err != nil {
-			rlog(r).WithError(err).Debug("session lookup error")
+			rlog(r).WithError(err).Debug("session codec failed")
 			session = make(map[string]any)
 		}
 		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{

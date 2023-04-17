@@ -59,7 +59,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	w.WriteHeader(http.StatusOK)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		rlog(r).WithError(err).Error("template write")
+		rlog(r).WithError(err).Error("template write failed")
 	}
 }
 
