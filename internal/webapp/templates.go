@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/oxtoacart/bpool"
+	"github.com/sirupsen/logrus"
 
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/templates"
@@ -25,7 +26,7 @@ var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
 func RenderErr(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
-	RSet(r, "err", err)
+	RSet(r, logrus.ErrorKey, err)
 	msg = fmt.Sprintf("ID: %s\nError: %s\n", rid(r), msg)
 	http.Error(w, msg, statusCode)
 }
