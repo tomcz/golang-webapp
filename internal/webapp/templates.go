@@ -42,6 +42,8 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 		RenderErr(w, r, err, "Failed to create template", http.StatusInternalServerError)
 		return
 	}
+	// buffer template execution to avoid writing
+	// incomplete or malformed data to the response
 	buf := &bytes.Buffer{}
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
