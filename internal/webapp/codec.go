@@ -80,6 +80,7 @@ func (c *sessionCodec) encode(data map[string]any, expiresAt time.Time) (string,
 		delete(data, sessionExpiresAt)
 	}()
 	buf := &bytes.Buffer{}
+	defer buf.Reset()
 	err := gob.NewEncoder(buf).Encode(data)
 	if err != nil {
 		return "", fmt.Errorf("gob.encode: %w", err)

@@ -45,6 +45,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	// buffer template execution to avoid writing
 	// incomplete or malformed data to the response
 	buf := &bytes.Buffer{}
+	defer buf.Reset()
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
 		err = fmt.Errorf("template exec: %w", err)
