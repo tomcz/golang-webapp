@@ -79,8 +79,8 @@ func (c *sessionCodec) encode(data map[string]any, expiresAt time.Time) (string,
 	defer func() {
 		delete(data, sessionExpiresAt)
 	}()
-	sw := &bytes.Buffer{}
-	err := gob.NewEncoder(sw).Encode(data)
+	buf := &bytes.Buffer{}
+	err := gob.NewEncoder(buf).Encode(data)
 	if err != nil {
 		return "", fmt.Errorf("gob.encode: %w", err)
 	}
@@ -97,7 +97,7 @@ func (c *sessionCodec) encode(data map[string]any, expiresAt time.Time) (string,
 	if err != nil {
 		return "", fmt.Errorf("nonce.new: %w", err)
 	}
-	cipherText := gcm.Seal(nil, nonce, sw.Bytes(), nil)
+	cipherText := gcm.Seal(nil, nonce, buf.Bytes(), nil)
 	value := base64.URLEncoding.EncodeToString(cipherText) + "." + base64.URLEncoding.EncodeToString(nonce)
 	return value, nil
 }

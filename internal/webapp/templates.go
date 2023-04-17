@@ -1,6 +1,7 @@
 package webapp
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -8,17 +9,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/oxtoacart/bpool"
 	"github.com/sirupsen/logrus"
 
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/templates"
 )
-
-// use a buffer pool to avoid creating and freeing
-// buffers when we execute templates to avoid writing
-// incomplete or malformed data to the response
-var bufPool = bpool.NewBufferPool(48)
 
 // no need to recreate templates in prod builds
 // since they're not going to change between renders
@@ -47,8 +42,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 		RenderErr(w, r, err, "Failed to create template", http.StatusInternalServerError)
 		return
 	}
-	buf := bufPool.Get()
-	defer bufPool.Put(buf)
+	buf := &bytes.Buffer{}
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
 		err = fmt.Errorf("template exec: %w", err)
