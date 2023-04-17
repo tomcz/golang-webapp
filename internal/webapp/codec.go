@@ -2,16 +2,15 @@ package webapp
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
+
+	"github.com/google/tink/go/aead/subtle"
 )
 
 const sessionExpiresAt = "_Expires_At"
@@ -85,48 +84,29 @@ func (c *sessionCodec) encode(data map[string]any, expiresAt time.Time) (string,
 	if err != nil {
 		return "", fmt.Errorf("gob.encode: %w", err)
 	}
-	block, err := aes.NewCipher(c.encKey)
+	cipher, err := subtle.NewAESGCMSIV(c.encKey)
 	if err != nil {
-		return "", fmt.Errorf("aes.new: %w", err)
+		return "", fmt.Errorf("cipher.new: %w", err)
 	}
-	gcm, err := cipher.NewGCM(block)
+	cipherText, err := cipher.Encrypt(buf.Bytes(), nil)
 	if err != nil {
-		return "", fmt.Errorf("gcm.new: %w", err)
+		return "", fmt.Errorf("cipher.encrypt: %w", err)
 	}
-	nonce := make([]byte, gcm.NonceSize())
-	_, err = rand.Read(nonce)
-	if err != nil {
-		return "", fmt.Errorf("nonce.new: %w", err)
-	}
-	cipherText := gcm.Seal(nil, nonce, buf.Bytes(), nil)
-	value := base64.URLEncoding.EncodeToString(cipherText) + "." + base64.URLEncoding.EncodeToString(nonce)
-	return value, nil
+	return base64.URLEncoding.EncodeToString(cipherText), nil
 }
 
 func (c *sessionCodec) decode(cookieValue string, now time.Time) (map[string]any, error) {
-	tokens := strings.Split(cookieValue, ".")
-	if len(tokens) != 2 {
-		return nil, fmt.Errorf("expected 2 tokens, got %d", len(tokens))
-	}
-	cipherText, err := base64.URLEncoding.DecodeString(tokens[0])
+	cipherText, err := base64.URLEncoding.DecodeString(cookieValue)
 	if err != nil {
-		return nil, fmt.Errorf("cipherText.decode: %w", err)
+		return nil, fmt.Errorf("cookieValue.decode: %w", err)
 	}
-	nonce, err := base64.URLEncoding.DecodeString(tokens[1])
+	cipher, err := subtle.NewAESGCMSIV(c.encKey)
 	if err != nil {
-		return nil, fmt.Errorf("nonce.decode: %w", err)
+		return nil, fmt.Errorf("cipher.new: %w", err)
 	}
-	block, err := aes.NewCipher(c.encKey)
+	plainText, err := cipher.Decrypt(cipherText, nil)
 	if err != nil {
-		return nil, fmt.Errorf("aes.new: %w", err)
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("gcm.new: %w", err)
-	}
-	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
-	if err != nil {
-		return nil, fmt.Errorf("gcm.open: %w", err)
+		return nil, fmt.Errorf("cipher.decrypt: %w", err)
 	}
 	var result map[string]any
 	err = gob.NewDecoder(bytes.NewReader(plainText)).Decode(&result)
