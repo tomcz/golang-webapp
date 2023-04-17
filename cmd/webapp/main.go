@@ -51,14 +51,13 @@ func main() {
 func realMain() error {
 	knownUsers := getenv("KNOWN_USERS", "")
 	addr := getenv("LISTEN_ADDR", ":3000")
-	cookieAuth := getenv("COOKIE_AUTH_KEY", "")
 	cookieEnc := getenv("COOKIE_ENC_KEY", "")
 	cookieName := getenv("COOKIE_NAME", "example")
 	tlsCertFile := getenv("TLS_CERT_FILE", "")
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
-	session := webapp.NewSessionStore(cookieName, cookieAuth, cookieEnc, webapp.CsrfPerRequest)
+	session := webapp.NewSessionStore(cookieName, cookieEnc, webapp.CsrfPerRequest)
 	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers(knownUsers)), log, withTLS)
 
 	server := &http.Server{
