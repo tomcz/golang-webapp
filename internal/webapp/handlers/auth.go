@@ -15,11 +15,11 @@ const (
 )
 
 func public(ss webapp.SessionStore, name string, next http.HandlerFunc) http.HandlerFunc {
-	return webapp.WithHandlerName(name, ss.Wrap(next))
+	return webapp.WithNamedHandler(name, ss.Wrap(next))
 }
 
 func private(ss webapp.SessionStore, name string, next http.HandlerFunc) http.HandlerFunc {
-	return webapp.WithHandlerName(name, ss.Wrap(func(w http.ResponseWriter, r *http.Request) {
+	return webapp.WithNamedHandler(name, ss.Wrap(func(w http.ResponseWriter, r *http.Request) {
 		s := webapp.CurrentSession(r)
 		if user := s.GetString(authUserKey); user != "" {
 			webapp.RSet(r, "auth_user", user)

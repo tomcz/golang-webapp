@@ -29,9 +29,13 @@ func WithMiddleware(h http.Handler, log logrus.FieldLogger, withTLS bool) http.H
 	return requestLogger(h, log.WithField("component", "middleware"))
 }
 
-func WithHandlerName(name string, next http.Handler) http.HandlerFunc {
+func WithNamedHandlerFunc(name string, next http.HandlerFunc) http.HandlerFunc {
+	return WithNamedHandler(name, next)
+}
+
+func WithNamedHandler(name string, next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		RSet(r, "req_route", name)
+		RSet(r, "req_handler", name)
 		next.ServeHTTP(w, r)
 	}
 }

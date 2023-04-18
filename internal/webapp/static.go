@@ -9,7 +9,7 @@ import (
 
 func registerStaticAssetRoutes(r *http.ServeMux) {
 	h := http.StripPrefix("/static/", http.FileServer(static.FS))
-	r.Handle("/static/", staticCacheControl(WithHandlerName("static", h)))
+	r.Handle("/static/", staticCacheControl(WithNamedHandler("static", h)))
 }
 
 func staticCacheControl(next http.Handler) http.Handler {

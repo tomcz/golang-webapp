@@ -10,9 +10,9 @@ func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handle
 	r := webapp.NewRouter()
 
 	// no session
-	webapp.Register(r, "/", webapp.WithHandlerName("root", http.RedirectHandler("/index", http.StatusFound)))
-	webapp.Register(r, "/error", webapp.WithHandlerName("exampleError", http.HandlerFunc(exampleError)))
-	webapp.Register(r, "/panic", webapp.WithHandlerName("examplePanic", http.HandlerFunc(examplePanic)))
+	webapp.Register(r, "/", webapp.WithNamedHandler("root", http.RedirectHandler("/index", http.StatusFound)))
+	webapp.Register(r, "/error", webapp.WithNamedHandlerFunc("exampleError", exampleError))
+	webapp.Register(r, "/panic", webapp.WithNamedHandlerFunc("examplePanic", examplePanic))
 
 	// unauthenticated
 	webapp.RegisterMethods(r, "/login", map[string]http.HandlerFunc{
