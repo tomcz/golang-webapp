@@ -29,3 +29,11 @@ func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handle
 
 	return r
 }
+
+func redirectToLogin(w http.ResponseWriter, r *http.Request) {
+	webapp.Redirect(w, r, "/login")
+}
+
+func redirectToIndex(w http.ResponseWriter, r *http.Request) {
+	webapp.Redirect(w, r, "/index")
+}

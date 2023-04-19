@@ -32,7 +32,7 @@ func private(ss webapp.SessionStore, name string, next http.HandlerFunc) http.Ha
 			url = fmt.Sprintf("%s?%s", url, query.Encode())
 		}
 		s.Set(afterLoginKey, url)
-		webapp.Redirect(w, r, "/login")
+		redirectToLogin(w, r)
 	}))
 }
 
@@ -49,13 +49,13 @@ func handleLogin(knownUsers map[string]string) http.HandlerFunc {
 		if !ok {
 			webapp.AddToSpan(r, "auth_error", fmt.Sprintf("unknown user %q", username))
 			s.AddFlashError("Invalid credentials. Please try again.")
-			webapp.Redirect(w, r, "/login")
+			redirectToLogin(w, r)
 			return
 		}
 		if subtle.ConstantTimeCompare([]byte(password), []byte(expected)) == 0 {
 			webapp.AddToSpan(r, "auth_error", fmt.Sprintf("invalid password for user %q", username))
 			s.AddFlashError("Invalid credentials. Please try again.")
-			webapp.Redirect(w, r, "/login")
+			redirectToLogin(w, r)
 			return
 		}
 		s.Set(authUserKey, username)
@@ -65,11 +65,11 @@ func handleLogin(knownUsers map[string]string) http.HandlerFunc {
 			webapp.Redirect(w, r, url)
 			return
 		}
-		webapp.Redirect(w, r, "/index")
+		redirectToIndex(w, r)
 	}
 }
 
 func handleLogout(w http.ResponseWriter, r *http.Request) {
 	webapp.CurrentSession(r).Clear()
-	webapp.Redirect(w, r, "/index")
+	redirectToIndex(w, r)
 }
