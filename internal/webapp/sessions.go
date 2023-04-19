@@ -143,12 +143,6 @@ func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func Redirect(w http.ResponseWriter, r *http.Request, url string) {
-	if saveSession(w, r) {
-		http.Redirect(w, r, url, http.StatusFound)
-	}
-}
-
 func CurrentSession(r *http.Request) Session {
 	s := getSession(r)
 	if s == nil {

@@ -22,6 +22,12 @@ func RegisterMethods(r *http.ServeMux, pattern string, methodRoutes map[string]h
 	r.Handle(pattern, noStoreCacheControl(methodSwitchFunc(methodRoutes)))
 }
 
+func Redirect(w http.ResponseWriter, r *http.Request, url string) {
+	if saveSession(w, r) {
+		http.Redirect(w, r, url, http.StatusFound)
+	}
+}
+
 func noStoreCacheControl(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
