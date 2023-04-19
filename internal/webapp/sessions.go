@@ -2,22 +2,19 @@ package webapp
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/securecookie"
-	"github.com/gorilla/sessions"
 	"github.com/tomcz/gotools/maps"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
-	currentSessionKey = contextKey("current.session")
-	csrfFormToken     = "_csrf_token"
-	csrfHttpHeader    = "X-Csrf-Token"
-	csrfSessionValue  = "CsrfToken"
+	CsrfFormToken  = "_csrf_token"
+	CsrfHttpHeader = "X-Csrf-Token"
+	CsrfTokenKey   = "CsrfToken"
 )
 
 type CsrfProtection int
@@ -29,10 +26,19 @@ const (
 )
 
 const (
-	flashMessageKey = "FlashMessage"
-	flashSuccessKey = "FlashSuccess"
-	flashWarningKey = "FlashWarning"
-	flashErrorKey   = "FlashError"
+	FlashMessageKey = "FlashMessage"
+	FlashSuccessKey = "FlashSuccess"
+	FlashWarningKey = "FlashWarning"
+	FlashErrorKey   = "FlashError"
+)
+
+const (
+	currentSessionKey   = contextKey("current.session")
+	sessionCsrfToken    = "_Csrf_Token"
+	sessionFlashMessage = "_Flash_Message"
+	sessionFlashSuccess = "_Flash_Success"
+	sessionFlashWarning = "_Flash_Warning"
+	sessionFlashError   = "_Flash_Error"
 )
 
 type SessionStore interface {
@@ -52,51 +58,44 @@ type Session interface {
 }
 
 type sessionStore struct {
-	store sessions.Store
-	name  string
 	csrf  CsrfProtection
+	codec *sessionCodec
 }
 
 type currentSession struct {
-	session *sessions.Session
+	session map[string]any
 	csrf    CsrfProtection
+	codec   *sessionCodec
 }
 
-func NewSessionStore(sessionName, authKey, encKey string, csrf CsrfProtection) SessionStore {
+func NewSessionStore(sessionName, sessionKey string, csrf CsrfProtection) (SessionStore, error) {
+	keyBytes, err := keyToBytes(sessionKey)
+	if err != nil {
+		return nil, err
+	}
 	return &sessionStore{
-		store: sessions.NewCookieStore(keyToBytes(authKey), keyToBytes(encKey)),
-		name:  sessionName,
-		csrf:  csrf,
-	}
-}
-
-func keyToBytes(key string) []byte {
-	if key != "" {
-		buf, err := base64.StdEncoding.DecodeString(key)
-		if err != nil {
-			buf = []byte(key)
-		}
-		if len(buf) == 32 {
-			return buf
-		}
-		sum := sha256.Sum256(buf)
-		return sum[:]
-	}
-	buf := securecookie.GenerateRandomKey(32)
-	if buf == nil {
-		panic("cannot generate random key")
-	}
-	return buf
+		csrf: csrf,
+		codec: &sessionCodec{
+			name:   sessionName,
+			key:    keyBytes,
+			maxAge: 30 * 24 * time.Hour,
+			path:   "/",
+		},
+	}, nil
 }
 
 func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// We're ignoring the error resulted from decoding an existing session
-		// since Get() always returns a session, even if empty.
-		session, _ := s.store.Get(r, s.name)
+		session, err := s.codec.getSession(r)
+		if err != nil {
+			span := trace.SpanFromContext(r.Context())
+			errorLog(r, span, errorID(), err).Debug("session codec failed")
+			session = make(map[string]any)
+		}
 		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{
 			session: session,
 			csrf:    s.csrf,
+			codec:   s.codec,
 		})
 		r = r.WithContext(ctx)
 		if s.csrfSafe(w, r) {
@@ -106,7 +105,7 @@ func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 }
 
 // according to RFC-7231
-var csrfSafeMethods = maps.NewSet("GET", "HEAD", "OPTIONS", "TRACE")
+var csrfSafeMethods = maps.NewSet(http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace)
 
 func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	if csrfSafeMethods[r.Method] {
@@ -115,19 +114,19 @@ func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	if s.csrf == CsrfDisabled {
 		return true
 	}
-	ss := CurrentSession(r)
-	sessionToken := ss.GetString(csrfSessionValue)
+	cs := CurrentSession(r)
+	sessionToken := cs.GetString(sessionCsrfToken)
 	if sessionToken == "" {
 		err := fmt.Errorf("no csrf token in session")
 		RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
 		return false
 	}
 	if s.csrf == CsrfPerRequest {
-		ss.Delete(csrfSessionValue)
+		cs.Delete(sessionCsrfToken)
 	}
-	requestToken := r.Header.Get(csrfHttpHeader)
+	requestToken := r.Header.Get(CsrfHttpHeader)
 	if requestToken == "" {
-		requestToken = r.FormValue(csrfFormToken)
+		requestToken = r.FormValue(CsrfFormToken)
 	}
 	var err error
 	if requestToken == "" {
@@ -167,22 +166,22 @@ func getSessionData(r *http.Request) map[string]any {
 	if s == nil {
 		return data
 	}
-	data[flashMessageKey] = s.session.Flashes(flashMessageKey)
-	data[flashSuccessKey] = s.session.Flashes(flashSuccessKey)
-	data[flashWarningKey] = s.session.Flashes(flashWarningKey)
-	data[flashErrorKey] = s.session.Flashes(flashErrorKey)
+	data[FlashMessageKey] = s.popFlash(sessionFlashMessage)
+	data[FlashSuccessKey] = s.popFlash(sessionFlashSuccess)
+	data[FlashWarningKey] = s.popFlash(sessionFlashWarning)
+	data[FlashErrorKey] = s.popFlash(sessionFlashError)
 	if s.csrf == CsrfDisabled {
 		return data
 	}
 	var csrfToken string
 	if s.csrf == CsrfPerSession {
-		csrfToken = s.GetString(csrfSessionValue)
+		csrfToken = s.GetString(sessionCsrfToken)
 	}
 	if csrfToken == "" {
-		csrfToken = uuid.New().String()
-		s.Set(csrfSessionValue, csrfToken)
+		csrfToken = uuid.NewString()
+		s.Set(sessionCsrfToken, csrfToken)
 	}
-	data[csrfSessionValue] = csrfToken
+	data[CsrfTokenKey] = csrfToken
 	return data
 }
 
@@ -191,25 +190,26 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if s == nil {
 		return true // no session to save
 	}
-	err := s.session.Save(r, w)
-	if err == nil {
-		return true // saved properly
+	err := s.codec.setSession(w, r, s.session)
+	if err != nil {
+		err = fmt.Errorf("session save: %w", err)
+		RenderError(w, r, err, "Failed to save session", http.StatusInternalServerError)
+		return false
 	}
-	RenderError(w, r, err, "failed to save session", http.StatusInternalServerError)
-	return false
+	return true
 }
 
 func (c *currentSession) Set(key string, value any) {
-	c.session.Values[key] = value
+	c.session[key] = value
 }
 
 func (c *currentSession) Get(key string) (any, bool) {
-	value, found := c.session.Values[key]
+	value, found := c.session[key]
 	return value, found
 }
 
 func (c *currentSession) GetString(key string) string {
-	if value, found := c.session.Values[key]; found {
+	if value, found := c.Get(key); found {
 		if txt, ok := value.(string); ok {
 			return txt
 		}
@@ -218,31 +218,46 @@ func (c *currentSession) GetString(key string) string {
 }
 
 func (c *currentSession) AddFlashMessage(msg string) {
-	c.session.AddFlash(msg, flashMessageKey)
+	c.addFlash(sessionFlashMessage, msg)
 }
 
 func (c *currentSession) AddFlashSuccess(msg string) {
-	c.session.AddFlash(msg, flashSuccessKey)
+	c.addFlash(sessionFlashSuccess, msg)
 }
 
 func (c *currentSession) AddFlashWarning(msg string) {
-	c.session.AddFlash(msg, flashWarningKey)
+	c.addFlash(sessionFlashWarning, msg)
 }
 
 func (c *currentSession) AddFlashError(msg string) {
-	c.session.AddFlash(msg, flashErrorKey)
+	c.addFlash(sessionFlashError, msg)
+}
+
+func (c *currentSession) addFlash(key, msg string) {
+	c.Set(key, append(c.getFlash(key), msg))
+}
+
+func (c *currentSession) getFlash(key string) []string {
+	if value, found := c.Get(key); found {
+		if flash, ok := value.([]string); ok {
+			return flash
+		}
+	}
+	return nil
+}
+
+func (c *currentSession) popFlash(key string) []string {
+	flash := c.getFlash(key)
+	c.Delete(key)
+	return flash
 }
 
 func (c *currentSession) Delete(key string) {
-	delete(c.session.Values, key)
+	delete(c.session, key)
 }
 
 func (c *currentSession) Clear() {
-	keys := make([]any, 0, len(c.session.Values))
-	for key := range c.session.Values {
-		keys = append(keys, key)
-	}
-	for _, key := range keys {
-		delete(c.session.Values, key)
+	for _, key := range maps.Keys(c.session) {
+		c.Delete(key)
 	}
 }

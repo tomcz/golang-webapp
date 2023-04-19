@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/securecookie"
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -21,14 +21,14 @@ func panicRecovery(next http.Handler) http.Handler {
 				} else {
 					err = fmt.Errorf("panic: %v", p)
 				}
-				errID := newErrorID()
+				errID := errorID()
 				span := trace.SpanFromContext(r.Context())
 				span.RecordError(err,
 					trace.WithStackTrace(true),
 					trace.WithAttributes(attribute.String("err_id", errID)),
 					trace.WithAttributes(attribute.String("err_msg", "recovered from panic")),
 				)
-				logError(r, span, errID, err, "recovered from panic")
+				errorLog(r, span, errID, err).Error("recovered from panic")
 				msg := fmt.Sprintf("[%s] request failed", errID)
 				http.Error(w, msg, http.StatusInternalServerError)
 			}
@@ -44,28 +44,32 @@ func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, 
 }
 
 func RecordError(r *http.Request, err error, msg string) string {
-	errID := newErrorID()
+	errID := errorID()
 	span := trace.SpanFromContext(r.Context())
 	span.RecordError(err,
 		trace.WithAttributes(attribute.String("err_id", errID)),
 		trace.WithAttributes(attribute.String("err_msg", msg)),
 	)
-	logError(r, span, errID, err, msg)
+	errorLog(r, span, errID, err).Warn(msg)
 	return errID
 }
 
-func logError(r *http.Request, span trace.Span, errID string, err error, msg string) {
+func errorLog(r *http.Request, span trace.Span, errID string, err error) logrus.FieldLogger {
 	ctx := span.SpanContext()
-	getLogger(r).WithError(err).
+	return getLogger(r).WithError(err).
 		WithField("err_id", errID).
 		WithField("req_method", r.Method).
 		WithField("req_path", r.URL.Path).
 		WithField("trace_id", ctx.TraceID()).
-		WithField("span_id", ctx.SpanID()).
-		Warn(msg)
+		WithField("span_id", ctx.SpanID())
 }
 
-func newErrorID() string {
-	// unique-enough, short, and unambigious, error reference for users to notify us
-	return strings.ToUpper(hex.EncodeToString(securecookie.GenerateRandomKey(4)))
+// unique-enough, short, and unambiguous, error reference for users to notify us
+func errorID() string {
+	buf, err := randomBytes(4)
+	if err != nil {
+		return "XXXX"
+	}
+	id := hex.EncodeToString(buf)
+	return strings.ToUpper(id)
 }
