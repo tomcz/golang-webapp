@@ -58,6 +58,17 @@ type sessionCodec struct {
 }
 
 func (c *sessionCodec) setSession(w http.ResponseWriter, r *http.Request, session map[string]any) error {
+	if len(session) == 0 {
+		cookie := &http.Cookie{
+			Name:     c.name,
+			Path:     c.path,
+			MaxAge:   -1,
+			Secure:   r.URL.Scheme == "https",
+			HttpOnly: true,
+		}
+		http.SetCookie(w, cookie)
+		return nil
+	}
 	expiresAt := time.Now().Add(c.maxAge)
 	value, err := c.encode(session, expiresAt)
 	if err != nil {
