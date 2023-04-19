@@ -255,7 +255,5 @@ func (c *currentSession) Delete(key string) {
 }
 
 func (c *currentSession) Clear() {
-	for _, key := range maps.Keys(c.session) {
-		c.Delete(key)
-	}
+	c.session = make(map[string]any)
 }
