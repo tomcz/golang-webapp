@@ -116,7 +116,7 @@ func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	sessionToken := cs.GetString(sessionCsrfToken)
 	if sessionToken == "" {
 		err := fmt.Errorf("no csrf token in session")
-		RenderErr(w, r, err, "CSRF validation failed", http.StatusBadRequest)
+		RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
 		return false
 	}
 	if s.csrf == CsrfPerRequest {
@@ -137,7 +137,7 @@ func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 		if s.csrf == CsrfPerRequest && !saveSession(w, r) {
 			return false
 		}
-		RenderErr(w, r, err, "CSRF validation failed", http.StatusBadRequest)
+		RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
 		return false
 	}
 	return true
@@ -191,7 +191,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	err := s.codec.setSession(w, r, s.session)
 	if err != nil {
 		err = fmt.Errorf("session save: %w", err)
-		RenderErr(w, r, err, "Failed to save session", http.StatusInternalServerError)
+		RenderError(w, r, err, "Failed to save session", http.StatusInternalServerError)
 		return false
 	}
 	return true

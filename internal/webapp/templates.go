@@ -20,7 +20,7 @@ import (
 var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
-func RenderErr(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
+func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	RSet(r, logrus.ErrorKey, err)
 	msg = fmt.Sprintf("ID: %s\nError: %s\n", rid(r), msg)
 	http.Error(w, msg, statusCode)
@@ -39,7 +39,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	tmpl, err := newTemplate(templatePaths)
 	if err != nil {
 		err = fmt.Errorf("template new: %w", err)
-		RenderErr(w, r, err, "Failed to create template", http.StatusInternalServerError)
+		RenderError(w, r, err, "Failed to create template", http.StatusInternalServerError)
 		return
 	}
 	// buffer template execution to avoid writing
@@ -49,7 +49,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	err = tmpl.ExecuteTemplate(buf, "main", data)
 	if err != nil {
 		err = fmt.Errorf("template exec: %w", err)
-		RenderErr(w, r, err, "Failed to execute template", http.StatusInternalServerError)
+		RenderError(w, r, err, "Failed to execute template", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -7,7 +7,7 @@ import (
 )
 
 func exampleError(w http.ResponseWriter, r *http.Request) {
-	webapp.RenderErr(w, r, nil, "Example error", http.StatusInternalServerError)
+	webapp.RenderError(w, r, nil, "Example error", http.StatusInternalServerError)
 }
 
 func examplePanic(http.ResponseWriter, *http.Request) {
