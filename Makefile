@@ -33,16 +33,16 @@ keygen:
 
 .PHONY: build-dev
 build-dev: target
-	go build -tags dev -ldflags "${LDFLAGS}" -o target/golang-webapp ./cmd/webapp/...
+	go build -tags dev -ldflags "${LDFLAGS}" -o target ./cmd/...
 
 .PHONY: build-prod
 build-prod: target
-	go build -tags prod -ldflags "${LDFLAGS}" -o target/golang-webapp ./cmd/webapp/...
+	go build -tags prod -ldflags "${LDFLAGS}" -o target ./cmd...
 
 .PHONY: run-dev
 run-dev: build-dev
-	./target/golang-webapp
+	./target/webapp
 
 .PHONY: run-prod
 run-prod: build-prod
-	./target/golang-webapp
+	./target/webapp
