@@ -12,7 +12,7 @@ import (
 	"github.com/google/tink/go/aead/subtle"
 )
 
-const sessionExpiresAt = "_Expires_At"
+const sessionExpiresAt = "_Expires_At_"
 
 func init() {
 	gob.Register(time.Time{})
