@@ -45,7 +45,7 @@ func TestCodecCookie(t *testing.T) {
 	}
 
 	data := map[string]any{"wibble": "wobble"}
-	outReq := httptest.NewRequest(http.MethodGet, "/foo", nil)
+	outReq := httptest.NewRequest(http.MethodGet, "https://example.com/foo", nil)
 	outRes := httptest.NewRecorder()
 	err = codec.setSession(outRes, outReq, data)
 	assert.NilError(t, err)
@@ -55,7 +55,7 @@ func TestCodecCookie(t *testing.T) {
 	assert.Assert(t, cookie != nil)
 	assert.Equal(t, codec.path, cookie.Path)
 	assert.Equal(t, int(codec.maxAge.Seconds()), cookie.MaxAge)
-	assert.Equal(t, false, cookie.Secure)
+	assert.Equal(t, true, cookie.Secure)
 	assert.Equal(t, true, cookie.HttpOnly)
 
 	inReq := httptest.NewRequest(http.MethodGet, "/bar", nil)
