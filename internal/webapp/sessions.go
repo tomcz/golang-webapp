@@ -33,11 +33,11 @@ const (
 
 const (
 	currentSessionKey   = contextKey("current.session")
-	sessionCsrfToken    = "_Csrf_Token"
-	sessionFlashMessage = "_Flash_Message"
-	sessionFlashSuccess = "_Flash_Success"
-	sessionFlashWarning = "_Flash_Warning"
-	sessionFlashError   = "_Flash_Error"
+	sessionCsrfToken    = "_Csrf_Token_"
+	sessionFlashMessage = "_Flash_Message_"
+	sessionFlashSuccess = "_Flash_Success_"
+	sessionFlashWarning = "_Flash_Warning_"
+	sessionFlashError   = "_Flash_Error_"
 )
 
 type SessionStore interface {
