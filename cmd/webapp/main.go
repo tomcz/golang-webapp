@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/tomcz/gotools/errgroup"
 	"github.com/tomcz/gotools/quiet"
 
 	"github.com/tomcz/golang-webapp/build"
@@ -72,31 +70,22 @@ func realMain() error {
 	if withTLS {
 		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 	}
-
-	group, ctx := errgroup.NewContext(context.Background())
-	group.Go(func() error {
-		ll := log.WithField("addr", addr)
-		if withTLS {
-			ll.Info("starting server with TLS")
-			return server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
-		}
+	go func() {
+		signalCh := make(chan os.Signal, 1)
+		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+		<-signalCh
+		log.Info("shutdown received")
+		quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
+	}()
+	ll := log.WithField("addr", addr)
+	if withTLS {
+		ll.Info("starting server with TLS")
+		err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
+	} else {
 		ll.Info("starting server without TLS")
-		return server.ListenAndServe()
-	})
-	group.Go(func() error {
-		signalChan := make(chan os.Signal, 1)
-		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-		select {
-		case <-signalChan:
-			log.Info("shutdown received")
-			quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
-			return nil
-		case <-ctx.Done():
-			return nil
-		}
-	})
-	err = group.Wait()
-	if err != nil && errors.Is(err, http.ErrServerClosed) {
+		err = server.ListenAndServe()
+	}
+	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
 	return err
