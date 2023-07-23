@@ -9,7 +9,6 @@ import (
 	"github.com/unrolled/secure"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -42,18 +41,6 @@ func WithMiddleware(h http.Handler, withTLS bool, log logrus.FieldLogger) http.H
 func AddToSpan(r *http.Request, key, value string) {
 	span := trace.SpanFromContext(r.Context())
 	span.SetAttributes(attribute.String(key, value))
-}
-
-func WithNamedHandlerFunc(name string, next http.HandlerFunc) http.HandlerFunc {
-	return WithNamedHandler(name, next)
-}
-
-func WithNamedHandler(name string, next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		span := trace.SpanFromContext(r.Context())
-		span.SetAttributes(semconv.HTTPServerNameKey.String(name))
-		next.ServeHTTP(w, r)
-	}
 }
 
 func setLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
