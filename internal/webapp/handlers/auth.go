@@ -14,12 +14,12 @@ const (
 	afterLoginKey = "AfterLogin"
 )
 
-func public(ss webapp.SessionStore, name string, next http.HandlerFunc) http.HandlerFunc {
-	return webapp.WithNamedHandler(name, ss.Wrap(next))
+func public(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
+	return ss.Wrap(next)
 }
 
-func private(ss webapp.SessionStore, name string, next http.HandlerFunc) http.HandlerFunc {
-	return webapp.WithNamedHandler(name, ss.Wrap(func(w http.ResponseWriter, r *http.Request) {
+func private(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
+	return ss.Wrap(func(w http.ResponseWriter, r *http.Request) {
 		s := webapp.CurrentSession(r)
 		if user := s.GetString(authUserKey); user != "" {
 			webapp.RSet(r, "auth_user", user)
@@ -33,7 +33,7 @@ func private(ss webapp.SessionStore, name string, next http.HandlerFunc) http.Ha
 		}
 		s.Set(afterLoginKey, url)
 		redirectToLogin(w, r)
-	}))
+	})
 }
 
 func showLogin(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +62,7 @@ func handleLogin(knownUsers map[string]string) http.HandlerFunc {
 		webapp.RSet(r, "auth_user", username)
 		s.AddFlashMessage(fmt.Sprintf("Welcome %s!", username))
 		if url := s.GetString(afterLoginKey); url != "" {
-			webapp.Redirect(w, r, url)
+			webapp.RedirectToUrl(w, r, url)
 			return
 		}
 		redirectToIndex(w, r)

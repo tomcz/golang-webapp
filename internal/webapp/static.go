@@ -3,13 +3,15 @@ package webapp
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
+
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/static"
 )
 
-func registerStaticAssetRoutes(r *http.ServeMux) {
+func registerStaticAssetRoutes(r *mux.Router) {
 	h := http.StripPrefix("/static/", http.FileServer(static.FS))
-	r.Handle("/static/", staticCacheControl(WithNamedHandler("static", h)))
+	r.PathPrefix("/static/").Handler(staticCacheControl(h)).Name("static")
 }
 
 func staticCacheControl(next http.Handler) http.Handler {

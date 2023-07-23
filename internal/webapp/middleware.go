@@ -29,17 +29,6 @@ func WithMiddleware(h http.Handler, log logrus.FieldLogger, withTLS bool) http.H
 	return requestLogger(h, log.WithField("component", "middleware"))
 }
 
-func WithNamedHandlerFunc(name string, next http.HandlerFunc) http.HandlerFunc {
-	return WithNamedHandler(name, next)
-}
-
-func WithNamedHandler(name string, next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		RSet(r, "req_handler", name)
-		next.ServeHTTP(w, r)
-	}
-}
-
 func panicRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
