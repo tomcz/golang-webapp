@@ -3,10 +3,10 @@ package webapp
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
-	"github.com/tomcz/gotools/slices"
 	"gotest.tools/v3/assert"
 )
 
@@ -51,8 +51,9 @@ func TestCodecCookie(t *testing.T) {
 	assert.NilError(t, err)
 
 	cookies := outRes.Result().Cookies()
-	cookie := slices.First(cookies, func(cookie *http.Cookie) bool { return cookie.Name == codec.name })
-	assert.Assert(t, cookie != nil)
+	idx := slices.IndexFunc(cookies, func(c *http.Cookie) bool { return c.Name == codec.name })
+	assert.Assert(t, idx >= 0)
+	cookie := cookies[idx]
 	assert.Equal(t, codec.path, cookie.Path)
 	assert.Equal(t, int(codec.maxAge.Seconds()), cookie.MaxAge)
 	assert.Equal(t, true, cookie.Secure)

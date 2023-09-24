@@ -9,8 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/templates"
 )
@@ -21,7 +19,7 @@ var tmplCache = make(map[string]*template.Template)
 var tmplLock sync.RWMutex
 
 func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
-	RSet(r, logrus.ErrorKey, err)
+	RSet(r, "error", err)
 	msg = fmt.Sprintf("ID: %s\nError: %s\n", rid(r), msg)
 	http.Error(w, msg, statusCode)
 }
@@ -56,7 +54,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	w.WriteHeader(http.StatusOK)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		rlog(r).WithError(err).Error("template write failed")
+		rlog(r).Error("template write failed", "error", err)
 	}
 }
 

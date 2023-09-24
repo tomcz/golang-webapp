@@ -2,18 +2,19 @@ package webapp
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"runtime/debug"
 	"time"
 
+	om "github.com/elliotchance/orderedmap/v2"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
 )
 
-func WithMiddleware(h http.Handler, log logrus.FieldLogger, withTLS bool) http.Handler {
+func WithMiddleware(h http.Handler, withTLS bool) http.Handler {
 	sm := secure.New(secure.Options{
 		BrowserXssFilter:     true,
 		FrameDeny:            true,
@@ -26,7 +27,7 @@ func WithMiddleware(h http.Handler, log logrus.FieldLogger, withTLS bool) http.H
 	h = sm.Handler(h)
 	h = panicRecovery(h)
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
-	return requestLogger(h, log.WithField("component", "middleware"))
+	return requestLogger(h)
 }
 
 func panicRecovery(next http.Handler) http.Handler {
@@ -43,13 +44,13 @@ func panicRecovery(next http.Handler) http.Handler {
 	})
 }
 
-func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
+func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		reqID := uuid.NewString()
-		log = log.WithField("req_id", reqID)
-		fields := logrus.Fields{}
+		log := slog.With("component", "web", "req_id", reqID)
+		fields := om.NewOrderedMap[string, any]()
 
 		rr := setupContext(r, reqID, log, fields)
 		ww := negroni.NewResponseWriter(w)
@@ -58,23 +59,28 @@ func requestLogger(next http.Handler, log logrus.FieldLogger) http.Handler {
 
 		duration := time.Since(start)
 
-		fields["req_start_at"] = start
-		fields["res_duration_ms"] = duration.Milliseconds()
-		fields["res_duration_ns"] = duration.Nanoseconds()
-		fields["res_status"] = ww.Status()
-		fields["res_size"] = ww.Size()
-		fields["req_host"] = r.Host
-		fields["req_method"] = r.Method
-		fields["req_path"] = r.URL.Path
-		fields["req_user_agent"] = r.UserAgent()
-		fields["req_remote_addr"] = r.RemoteAddr
-
+		fields.Set("req_start_at", start)
+		fields.Set("req_host", r.Host)
+		fields.Set("req_method", r.Method)
+		fields.Set("req_path", r.URL.Path)
+		fields.Set("req_user_agent", r.UserAgent())
+		fields.Set("req_remote_addr", r.RemoteAddr)
 		if referer := r.Referer(); referer != "" {
-			fields["req_referer"] = referer
+			fields.Set("req_referer", referer)
 		}
+
+		fields.Set("res_status", ww.Status())
+		fields.Set("res_duration_ms", duration.Milliseconds())
+		fields.Set("res_duration_ns", duration.Nanoseconds())
+		fields.Set("res_size", ww.Size())
 		if loc := ww.Header().Get("Location"); loc != "" {
-			fields["res_location"] = loc
+			fields.Set("res_location", loc)
 		}
-		log.WithFields(fields).Info("request finished")
+
+		args := make([]any, 0, fields.Len()*2)
+		for el := fields.Front(); el != nil; el = el.Next() {
+			args = append(args, el.Key, el.Value)
+		}
+		log.Info("request finished", args...)
 	})
 }

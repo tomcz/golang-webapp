@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tomcz/gotools/maps"
 )
 
 const (
@@ -87,7 +86,7 @@ func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, err := s.codec.getSession(r)
 		if err != nil {
-			rlog(r).WithError(err).Debug("session codec failed")
+			rlog(r).Debug("session codec failed", "error", err)
 			session = make(map[string]any)
 		}
 		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{
@@ -103,7 +102,12 @@ func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 }
 
 // according to RFC-7231
-var csrfSafeMethods = maps.NewSet(http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace)
+var csrfSafeMethods = map[string]bool{
+	http.MethodGet:     true,
+	http.MethodHead:    true,
+	http.MethodOptions: true,
+	http.MethodTrace:   true,
+}
 
 func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	if csrfSafeMethods[r.Method] {

@@ -2,9 +2,10 @@ package webapp
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
-	"github.com/sirupsen/logrus"
+	om "github.com/elliotchance/orderedmap/v2"
 )
 
 type contextKey string
@@ -15,7 +16,7 @@ const (
 	currentLoggerKey    = contextKey("current.logger")
 )
 
-func setupContext(r *http.Request, requestID string, log logrus.FieldLogger, md logrus.Fields) *http.Request {
+func setupContext(r *http.Request, requestID string, log *slog.Logger, md *om.OrderedMap[string, any]) *http.Request {
 	ctx := context.WithValue(r.Context(), currentRequestIdKey, requestID)
 	ctx = context.WithValue(ctx, currentMetadataKey, md)
 	ctx = context.WithValue(ctx, currentLoggerKey, log)
@@ -29,18 +30,18 @@ func rid(r *http.Request) string {
 	return ""
 }
 
-func rlog(r *http.Request) logrus.FieldLogger {
-	if log, ok := r.Context().Value(currentLoggerKey).(logrus.FieldLogger); ok {
+func rlog(r *http.Request) *slog.Logger {
+	if log, ok := r.Context().Value(currentLoggerKey).(*slog.Logger); ok {
 		return log
 	}
-	return logrus.New()
+	return slog.Default()
 }
 
 func RSet(r *http.Request, key string, value any) {
 	if value == nil {
 		return
 	}
-	if md, ok := r.Context().Value(currentMetadataKey).(logrus.Fields); ok {
-		md[key] = value
+	if md, ok := r.Context().Value(currentMetadataKey).(*om.OrderedMap[string, any]); ok {
+		md.Set(key, value)
 	}
 }

@@ -1,17 +1,15 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
-
-	"github.com/sirupsen/logrus"
-	"github.com/tomcz/gotools/quiet"
 
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/internal/webapp"
@@ -22,26 +20,32 @@ const development = "development"
 
 var (
 	env string
-	log logrus.FieldLogger
+	log *slog.Logger
 )
 
 func init() {
 	env = getenv("ENV", development)
-	if env == development {
-		logrus.SetFormatter(&logrus.TextFormatter{})
+	isDebug := getenv("LOG_DEBUG", "no") == "yes"
+	var opts slog.HandlerOptions
+	if isDebug {
+		opts.Level = slog.LevelDebug
 	} else {
-		logrus.SetFormatter(&logrus.JSONFormatter{})
+		opts.Level = slog.LevelInfo
 	}
-	log = logrus.WithFields(logrus.Fields{
-		"component": "main",
-		"build":     build.Version(),
-		"env":       env,
-	})
+	var h slog.Handler
+	if env == development {
+		h = slog.NewTextHandler(os.Stderr, &opts)
+	} else {
+		h = slog.NewJSONHandler(os.Stderr, &opts)
+	}
+	slog.SetDefault(slog.New(h).With("env", env, "build", build.Version()))
+	log = slog.With("component", "main")
 }
 
 func main() {
 	if err := realMain(); err != nil {
-		log.WithError(err).Fatalln("application failed")
+		log.Error("application failed", "error", err)
+		os.Exit(1)
 	}
 	log.Info("application stopped")
 }
@@ -59,7 +63,7 @@ func realMain() error {
 	if err != nil {
 		return err
 	}
-	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers(knownUsers)), log, withTLS)
+	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers(knownUsers)), withTLS)
 
 	server := &http.Server{
 		Addr:    addr,
@@ -75,9 +79,9 @@ func realMain() error {
 		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 		<-signalCh
 		log.Info("shutdown received")
-		quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
+		server.Shutdown(context.Background())
 	}()
-	ll := log.WithField("addr", addr)
+	ll := log.With("addr", addr)
 	if withTLS {
 		ll.Info("starting server with TLS")
 		err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
