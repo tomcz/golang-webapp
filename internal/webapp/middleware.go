@@ -52,13 +52,6 @@ func requestLogger(next http.Handler) http.Handler {
 		log := slog.With("component", "web", "req_id", reqID)
 		fields := om.NewOrderedMap[string, any]()
 
-		rr := setupContext(r, reqID, log, fields)
-		ww := negroni.NewResponseWriter(w)
-
-		next.ServeHTTP(ww, rr)
-
-		duration := time.Since(start)
-
 		fields.Set("req_start_at", start)
 		fields.Set("req_host", r.Host)
 		fields.Set("req_method", r.Method)
@@ -69,6 +62,12 @@ func requestLogger(next http.Handler) http.Handler {
 			fields.Set("req_referer", referer)
 		}
 
+		rr := setupContext(r, reqID, log, fields)
+		ww := negroni.NewResponseWriter(w)
+
+		next.ServeHTTP(ww, rr)
+
+		duration := time.Since(start)
 		fields.Set("res_status", ww.Status())
 		fields.Set("res_duration_ms", duration.Milliseconds())
 		fields.Set("res_duration_ns", duration.Nanoseconds())
