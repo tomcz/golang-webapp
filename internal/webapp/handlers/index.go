@@ -9,7 +9,7 @@ import (
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{authUserKey: webapp.CurrentSession(r).GetString(authUserKey)}
-	webapp.Render(w, r, data, "layout.gohtml", "index.gohtml")
+	webapp.Render(w, r, "index.gohtml", data)
 }
 
 func updateIndex(w http.ResponseWriter, r *http.Request) {

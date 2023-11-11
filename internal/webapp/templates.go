@@ -24,7 +24,49 @@ func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, 
 	http.Error(w, msg, statusCode)
 }
 
-func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templatePaths ...string) {
+type renderCfg struct {
+	layoutFile   string
+	templateName string
+	statusCode   int
+	contentType  string
+}
+
+type RenderOpt func(cfg *renderCfg)
+
+func RenderWithLayoutFile(layoutFile string) RenderOpt {
+	return func(cfg *renderCfg) {
+		cfg.layoutFile = layoutFile
+	}
+}
+
+func RenderWithTemplateName(templateName string) RenderOpt {
+	return func(cfg *renderCfg) {
+		cfg.templateName = templateName
+	}
+}
+
+func RenderWithStatusCode(statusCode int) RenderOpt {
+	return func(cfg *renderCfg) {
+		cfg.statusCode = statusCode
+	}
+}
+
+func RenderWithContentType(contentType string) RenderOpt {
+	return func(cfg *renderCfg) {
+		cfg.contentType = contentType
+	}
+}
+
+func Render(w http.ResponseWriter, r *http.Request, templateFile string, data map[string]any, opts ...RenderOpt) {
+	cfg := &renderCfg{
+		layoutFile:   "layout.gohtml",
+		templateName: "main",
+		statusCode:   http.StatusOK,
+		contentType:  "text/html; charset=utf-8",
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
 	if data == nil {
 		data = map[string]any{}
 	}
@@ -34,7 +76,7 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	if !saveSession(w, r) {
 		return
 	}
-	tmpl, err := newTemplate(templatePaths)
+	tmpl, err := newTemplate(cfg.layoutFile, templateFile)
 	if err != nil {
 		err = fmt.Errorf("template new: %w", err)
 		RenderError(w, r, err, "Failed to create template", http.StatusInternalServerError)
@@ -47,21 +89,21 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 	// incomplete or malformed data to the response
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	err = tmpl.ExecuteTemplate(buf, "main", data)
+	err = tmpl.ExecuteTemplate(buf, cfg.templateName, data)
 	if err != nil {
 		err = fmt.Errorf("template exec: %w", err)
 		RenderError(w, r, err, "Failed to execute template", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", cfg.contentType)
+	w.WriteHeader(cfg.statusCode)
 	_, err = buf.WriteTo(w)
 	if err != nil {
 		rlog(r).Error("template write failed", "error", err)
 	}
 }
 
-func newTemplate(templatePaths []string) (*template.Template, error) {
+func newTemplate(templatePaths ...string) (*template.Template, error) {
 	var cacheKey string
 	if build.IsProd {
 		cacheKey = strings.Join(templatePaths, ",")
@@ -74,6 +116,9 @@ func newTemplate(templatePaths []string) (*template.Template, error) {
 	}
 	tmpl := template.New("")
 	for _, path := range templatePaths {
+		if path == "" {
+			continue
+		}
 		buf, err := readTemplate(path)
 		if err != nil {
 			return nil, err

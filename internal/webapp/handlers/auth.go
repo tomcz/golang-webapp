@@ -37,7 +37,7 @@ func private(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
 }
 
 func showLogin(w http.ResponseWriter, r *http.Request) {
-	webapp.Render(w, r, nil, "layout.gohtml", "login.gohtml")
+	webapp.Render(w, r, "login.gohtml", nil)
 }
 
 func handleLogin(knownUsers map[string]string) http.HandlerFunc {
