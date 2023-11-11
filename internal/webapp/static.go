@@ -1,6 +1,7 @@
 package webapp
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -10,7 +11,10 @@ import (
 )
 
 func registerStaticAssetRoutes(r *mux.Router) {
-	h := http.StripPrefix("/static/", http.FileServer(static.FS))
+	// add commit info so we can set versioned static paths
+	// to prevent browsers using old assets with a new version
+	prefix := fmt.Sprintf("/static/%s/", build.Commit())
+	h := http.StripPrefix(prefix, http.FileServer(static.FS))
 	r.PathPrefix("/static/").Handler(staticCacheControl(h)).Name("static")
 }
 

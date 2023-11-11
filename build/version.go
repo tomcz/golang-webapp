@@ -4,6 +4,10 @@ import "fmt"
 
 var commit string
 
+func Commit() string {
+	return commit
+}
+
 func Version() string {
 	buildName := "dev"
 	if IsProd {

@@ -40,6 +40,9 @@ func Render(w http.ResponseWriter, r *http.Request, data map[string]any, templat
 		RenderError(w, r, err, "Failed to create template", http.StatusInternalServerError)
 		return
 	}
+	// add commit info so we can set versioned static paths
+	// to prevent browsers using old assets with a new version
+	data["Commit"] = build.Commit()
 	// buffer template execution to avoid writing
 	// incomplete or malformed data to the response
 	buf := &bytes.Buffer{}
