@@ -1,10 +1,13 @@
+{{- define "head" }}
+<script src="/static/{{ .Commit }}/js/htmx.min.js"></script>
+{{- end }}
 {{- define "body" }}
   <div class="text-end mb-2">
     <a href="/logout">Logout ({{ .AuthUser }})</a>
   </div>
   <div class="row justify-content-md-center">
     <div class="col-md-auto">
-      <form method="post" class="row row-cols-lg-auto g-3 align-items-center">
+      <form id="hello-form" class="row row-cols-lg-auto g-3 align-items-center" hx-post="/index" hx-target="#hello-form-target">
         <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
         <div class="col-12 form-floating">
           <input class="form-control" id="name" type="text" name="name" placeholder="Say hello to" required autofocus>
@@ -16,4 +19,5 @@
       </form>
     </div>
   </div>
+  <div id="hello-form-target" class="mt-2"></div>
 {{- end }}

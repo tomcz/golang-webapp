@@ -59,7 +59,7 @@ func realMain() error {
 	tlsKeyFile := getenv("TLS_KEY_FILE", "")
 	withTLS := tlsCertFile != "" && tlsKeyFile != ""
 
-	session, err := webapp.NewSessionStore(cookieName, cookieEnc, webapp.CsrfPerRequest)
+	session, err := webapp.NewSessionStore(cookieName, cookieEnc, webapp.CsrfPerSession)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func realMain() error {
 		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 		<-signalCh
 		log.Info("shutdown received")
-		server.Shutdown(context.Background())
+		server.Shutdown(context.Background()) //nolint:errcheck
 	}()
 	ll := log.With("addr", addr)
 	if withTLS {
