@@ -8,7 +8,12 @@ import (
 )
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
-	username := webapp.CurrentSession(r).GetString(authUserKey)
+	session := webapp.CurrentSession(r)
+	session.AddFlashError("example flash error message")
+	session.AddFlashWarning("example flash warning message")
+	session.AddFlashMessage("example flash generic message")
+	session.AddFlashSuccess("example flash success message")
+	username := session.GetString(authUserKey)
 	data := map[string]any{authUserKey: username}
 	webapp.Render(w, r, "index.gohtml", data)
 }

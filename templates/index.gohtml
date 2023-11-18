@@ -1,23 +1,19 @@
 {{- define "head" }}
-<script src="/static/{{ .Commit }}/js/htmx.min.js"></script>
+  <script src="/static/{{ .Commit }}/js/htmx.min.js"></script>
 {{- end }}
 {{- define "body" }}
-  <div class="text-end mb-2">
+  <div class="text-right my-2">
     <a href="/logout">Logout ({{ .AuthUser }})</a>
   </div>
-  <div class="row justify-content-md-center">
-    <div class="col-md-auto">
-      <form id="hello-form" class="row row-cols-lg-auto g-3 align-items-center" hx-post="/index" hx-target="#hello-form-target">
-        <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
-        <div class="col-12 form-floating">
-          <input class="form-control" id="name" type="text" name="name" placeholder="Say hello to" required autofocus>
-          <label for="name">Say hello to</label>
-        </div>
-        <div class="col-12">
-          <input type="submit" class="btn btn-primary" value="Hello">
-        </div>
-      </form>
-    </div>
+  <div class="column col-6 col-mx-auto">
+    <form id="hello-form" hx-post="/index" hx-target="#hello-form-target">
+      <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
+      <div class="input-group">
+        <label class="input-group-addon" for="name">Say hello to</label>
+        <input class="form-input" type="text" id="name" name="name" placeholder="World" required autofocus>
+        <button type="submit" class="btn btn-primary input-group-btn">Go</button>
+      </div>
+    </form>
+    <div id="hello-form-target" class="my-2"></div>
   </div>
-  <div id="hello-form-target" class="mt-2"></div>
 {{- end }}

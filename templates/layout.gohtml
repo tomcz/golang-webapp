@@ -9,32 +9,34 @@
   <link rel="stylesheet" href="/static/{{ .Commit }}/css/spectre.min.css">
   <link rel="stylesheet" href="/static/{{ .Commit }}/css/spectre-exp.min.css">
   <link rel="stylesheet" href="/static/{{ .Commit }}/css/spectre-icons.min.css">
+  <script src="/static/{{ .Commit }}/js/jquery.min.js"></script>
+  <script src="/static/{{ .Commit }}/js/toasts.js" defer></script>
   {{- template "head" .}}
 </head>
 <body>
-<div class="container">
+<div class="container grid-lg">
 {{ range .FlashError -}}
-  <div class="alert alert-danger alert-dismissible fade show mt-1" role="alert">
+  <div class="toast toast-error mt-1" role="alert">
+    <button class="btn btn-clear float-right"></button>
     {{ . }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 {{ end -}}
 {{ range .FlashWarning -}}
-  <div class="alert alert-warning alert-dismissible fade show mt-1" role="alert">
+  <div class="toast toast-warning mt-1" role="alert">
+    <button class="btn btn-clear float-right"></button>
     {{ . }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 {{ end -}}
 {{ range .FlashSuccess -}}
-  <div class="alert alert-success alert-dismissible fade show mt-1" role="alert">
+  <div class="toast toast-success mt-1" role="alert">
+    <button class="btn btn-clear float-right"></button>
     {{ . }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 {{ end -}}
 {{ range .FlashMessage -}}
-  <div class="alert alert-primary alert-dismissible fade show mt-1" role="alert">
+  <div class="toast toast-primary mt-1" role="alert">
+    <button class="btn btn-clear float-right"></button>
     {{ . }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 {{ end -}}
 {{ template "body" .}}
