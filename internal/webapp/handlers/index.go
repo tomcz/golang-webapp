@@ -23,9 +23,13 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "World"
 	}
+	var opts []webapp.RenderOpt
+	if r.Header.Get("Hx-Request") == "true" {
+		opts = append(opts,
+			webapp.RenderWithTemplateName("body"),
+			webapp.RenderWithLayoutFile(""),
+		)
+	}
 	data := map[string]any{"Name": name}
-	webapp.Render(w, r, "hello.gohtml", data,
-		webapp.RenderWithTemplateName("body"),
-		webapp.RenderWithLayoutFile(""),
-	)
+	webapp.Render(w, r, "hello.gohtml", data, opts...)
 }

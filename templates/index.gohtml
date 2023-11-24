@@ -6,7 +6,7 @@
     <a href="/logout">Logout ({{ .AuthUser }})</a>
   </div>
   <div class="column col-6 col-mx-auto">
-    <form id="hello-form" hx-post="/index" hx-target="#hello-form-target">
+    <form id="hello-form" action="/index" method="post" hx-post="/index" hx-target="#hello-form-target">
       <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
       <div class="input-group">
         <label class="input-group-addon" for="name">Say hello to</label>
