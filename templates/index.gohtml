@@ -1,12 +1,7 @@
 {{- define "head" }}
   <link rel="stylesheet" href="/static/{{ .Commit }}/css/forms.css">
   <script src="/static/{{ .Commit }}/js/htmx.min.js"></script>
-  <script src="/static/{{ .Commit }}/js/errors.js" defer></script>
-  <style>
-    form.htmx-request button {
-      display: none;
-    }
-  </style>
+  <script src="/static/{{ .Commit }}/js/events.js" defer></script>
 {{- end }}
 {{- define "body" }}
   <div class="text-right my-2">

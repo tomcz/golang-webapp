@@ -1,3 +1,15 @@
+document.addEventListener("htmx:beforeRequest", function (evt) {
+  const btn = evt.detail.elt.querySelector("button.input-group-btn");
+  btn.classList.add("loading");
+  btn.disabled = true;
+});
+
+document.addEventListener("htmx:afterRequest", function (evt) {
+  const btn = evt.detail.elt.querySelector("button.input-group-btn");
+  btn.classList.remove("loading");
+  btn.disabled = false;
+});
+
 document.addEventListener("htmx:responseError", function (evt) {
   const error = evt.detail.xhr.responseText.trim();
 
