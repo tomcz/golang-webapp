@@ -14,7 +14,7 @@ document.addEventListener("htmx:responseError", function (evt) {
   const error = evt.detail.xhr.responseText.trim();
 
   const pre = document.createElement("pre");
-  pre.classList.add("text-small", "my-0");
+  pre.classList.add("my-0"); // remove spectre margins
   pre.appendChild(document.createTextNode(error));
 
   const div = document.createElement("div");
