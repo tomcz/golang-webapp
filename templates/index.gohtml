@@ -5,7 +5,7 @@
 {{- end }}
 {{- define "body" }}
   <div class="text-right my-2">
-    <a href="/logout">Logout ({{ .AuthUser }})</a>
+    <a href="/logout">Sign out ({{ .AuthUser }})</a>
   </div>
   <div class="column col-6 col-mx-auto">
     <form id="hello-form" action="/index" method="post" hx-post="/index" hx-target="#hello-form-target">
