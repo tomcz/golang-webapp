@@ -26,6 +26,11 @@ func private(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 			return
 		}
+		if r.Header.Get("Hx-Request") == "true" {
+			err := fmt.Errorf("Unauthorised, please reload page to sign in.")
+			webapp.RenderError(w, r, err, err.Error(), http.StatusUnauthorized)
+			return
+		}
 		url := r.URL.Path
 		query := r.URL.Query()
 		if len(query) > 0 {
