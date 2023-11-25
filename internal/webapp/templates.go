@@ -20,7 +20,7 @@ var tmplLock sync.RWMutex
 
 func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	RSet(r, "error", err)
-	msg = fmt.Sprintf("ID: %s\nError: %s\n", rid(r), msg)
+	msg = fmt.Sprintf("ID: %s\nError: %s\n", RId(r), msg)
 	http.Error(w, msg, statusCode)
 }
 
@@ -99,7 +99,7 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	w.WriteHeader(cfg.statusCode)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		rlog(r).Error("template write failed", "error", err)
+		RLog(r).Error("template write failed", "error", err)
 	}
 }
 

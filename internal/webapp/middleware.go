@@ -7,7 +7,6 @@ import (
 	"runtime/debug"
 	"time"
 
-	om "github.com/elliotchance/orderedmap/v2"
 	"github.com/google/uuid"
 	"github.com/streadway/handy/breaker"
 	"github.com/unrolled/secure"
@@ -50,7 +49,7 @@ func requestLogger(next http.Handler) http.Handler {
 
 		reqID := uuid.NewString()
 		log := slog.With("component", "web", "req_id", reqID)
-		fields := om.NewOrderedMap[string, any]()
+		fields := newMetadataFields()
 
 		fields.Set("req_start_at", start)
 		fields.Set("req_host", r.Host)
@@ -76,10 +75,7 @@ func requestLogger(next http.Handler) http.Handler {
 			fields.Set("res_location", loc)
 		}
 
-		args := make([]any, 0, fields.Len()*2)
-		for el := fields.Front(); el != nil; el = el.Next() {
-			args = append(args, el.Key, el.Value)
-		}
+		args := fields.Slice()
 		log.Info("request finished", args...)
 	})
 }

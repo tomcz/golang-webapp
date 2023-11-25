@@ -16,21 +16,43 @@ const (
 	currentLoggerKey    = contextKey("current.logger")
 )
 
-func setupContext(r *http.Request, requestID string, log *slog.Logger, md *om.OrderedMap[string, any]) *http.Request {
+type metadataFields struct {
+	fields *om.OrderedMap[string, any]
+}
+
+func (m *metadataFields) Set(key string, value any) {
+	if value != nil {
+		m.fields.Set(key, value)
+	}
+}
+
+func (m *metadataFields) Slice() []any {
+	args := make([]any, 0, m.fields.Len()*2)
+	for el := m.fields.Front(); el != nil; el = el.Next() {
+		args = append(args, el.Key, el.Value)
+	}
+	return args
+}
+
+func newMetadataFields() *metadataFields {
+	return &metadataFields{fields: om.NewOrderedMap[string, any]()}
+}
+
+func setupContext(r *http.Request, requestID string, log *slog.Logger, md *metadataFields) *http.Request {
 	ctx := context.WithValue(r.Context(), currentRequestIdKey, requestID)
 	ctx = context.WithValue(ctx, currentMetadataKey, md)
 	ctx = context.WithValue(ctx, currentLoggerKey, log)
 	return r.WithContext(ctx)
 }
 
-func rid(r *http.Request) string {
+func RId(r *http.Request) string {
 	if id, ok := r.Context().Value(currentRequestIdKey).(string); ok {
 		return id
 	}
 	return ""
 }
 
-func rlog(r *http.Request) *slog.Logger {
+func RLog(r *http.Request) *slog.Logger {
 	if log, ok := r.Context().Value(currentLoggerKey).(*slog.Logger); ok {
 		return log
 	}
@@ -38,10 +60,7 @@ func rlog(r *http.Request) *slog.Logger {
 }
 
 func RSet(r *http.Request, key string, value any) {
-	if value == nil {
-		return
-	}
-	if md, ok := r.Context().Value(currentMetadataKey).(*om.OrderedMap[string, any]); ok {
-		md.Set(key, value)
+	if md, ok := r.Context().Value(currentMetadataKey).(*metadataFields); ok {
+		md.fields.Set(key, value)
 	}
 }
