@@ -14,7 +14,7 @@ document.addEventListener("htmx:responseError", function (evt) {
   const error = evt.detail.xhr.responseText.trim();
 
   const pre = document.createElement("pre");
-  pre.classList.add("my-0"); // remove spectre margins
+  pre.classList.add("response-error");
   pre.appendChild(document.createTextNode(error));
 
   const div = document.createElement("div");
@@ -25,7 +25,7 @@ document.addEventListener("htmx:responseError", function (evt) {
 });
 
 document.addEventListener("htmx:sendError", function (evt) {
-  const error = "Network error, please reload page."
+  const error = "Network error, please try again or reload page."
 
   const div = document.createElement("div");
   div.classList.add("toast", "toast-error");
