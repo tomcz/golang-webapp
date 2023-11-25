@@ -2,6 +2,11 @@
   <link rel="stylesheet" href="/static/{{ .Commit }}/css/forms.css">
   <script src="/static/{{ .Commit }}/js/htmx.min.js"></script>
   <script src="/static/{{ .Commit }}/js/errors.js" defer></script>
+  <style>
+    form.htmx-request button {
+      display: none;
+    }
+  </style>
 {{- end }}
 {{- define "body" }}
   <div class="text-right my-2">
@@ -13,8 +18,7 @@
       <div class="input-group">
         <label class="input-group-addon" for="name">Say hello to</label>
         <input class="form-input" type="text" id="name" name="name" placeholder="World" required autofocus>
-        <button type="submit" class="btn btn-primary input-group-btn ready">Go</button>
-        <button type="button" class="btn btn-primary input-group-btn loading" disabled>Going</button>
+        <button type="submit" class="btn btn-primary input-group-btn">Go</button>
       </div>
     </form>
     <div id="hello-form-target" class="my-2"></div>
