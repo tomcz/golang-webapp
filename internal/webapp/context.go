@@ -61,6 +61,6 @@ func RLog(r *http.Request) *slog.Logger {
 
 func RSet(r *http.Request, key string, value any) {
 	if md, ok := r.Context().Value(currentMetadataKey).(*metadataFields); ok {
-		md.fields.Set(key, value)
+		md.Set(key, value)
 	}
 }
