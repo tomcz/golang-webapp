@@ -1,7 +1,6 @@
 package webapp
 
 import (
-	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -9,14 +8,22 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/oxtoacart/bpool"
+
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/templates"
 )
 
-// no need to recreate templates in prod builds
-// since they're not going to change between renders
-var tmplCache = make(map[string]*template.Template)
-var tmplLock sync.RWMutex
+var (
+	tmplCache map[string]*template.Template
+	tmplLock  sync.RWMutex
+	bufPool   *bpool.BufferPool
+)
+
+func init() {
+	tmplCache = make(map[string]*template.Template)
+	bufPool = bpool.NewBufferPool(48) // NOTE: 48 is good enough for example app, maybe not in production
+}
 
 func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	RSet(r, "error", err)
@@ -67,6 +74,7 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	for _, opt := range opts {
 		opt(cfg)
 	}
+
 	if data == nil {
 		data = map[string]any{}
 	}
@@ -76,25 +84,30 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	if !saveSession(w, r) {
 		return
 	}
+
+	// add commit info so that we can set versioned static paths
+	// to prevent browsers using old assets with a new version
+	data["Commit"] = build.Commit()
+
 	tmpl, err := newTemplate(cfg.layoutFile, templateFile)
 	if err != nil {
 		err = fmt.Errorf("template new: %w", err)
 		RenderError(w, r, err, "Failed to create template", http.StatusInternalServerError)
 		return
 	}
-	// add commit info so we can set versioned static paths
-	// to prevent browsers using old assets with a new version
-	data["Commit"] = build.Commit()
+
 	// buffer template execution to avoid writing
-	// incomplete or malformed data to the response
-	buf := &bytes.Buffer{}
-	defer buf.Reset()
+	// incomplete or malformed content to the response
+	buf := bufPool.Get()
+	defer bufPool.Put(buf)
+
 	err = tmpl.ExecuteTemplate(buf, cfg.templateName, data)
 	if err != nil {
 		err = fmt.Errorf("template exec: %w", err)
 		RenderError(w, r, err, "Failed to execute template", http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", cfg.contentType)
 	w.WriteHeader(cfg.statusCode)
 	_, err = buf.WriteTo(w)
@@ -104,6 +117,8 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 }
 
 func newTemplate(templatePaths ...string) (*template.Template, error) {
+	// no need to recreate templates in prod builds
+	// since they're not going to change between renders
 	var cacheKey string
 	if build.IsProd {
 		cacheKey = strings.Join(templatePaths, ",")
