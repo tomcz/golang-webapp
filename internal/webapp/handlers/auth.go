@@ -42,6 +42,11 @@ func private(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
 }
 
 func showLogin(w http.ResponseWriter, r *http.Request) {
+	s := webapp.CurrentSession(r)
+	if user := s.GetString(authUserKey); user != "" {
+		redirectToIndex(w, r)
+		return
+	}
 	webapp.Render(w, r, "login.gohtml", nil)
 }
 
