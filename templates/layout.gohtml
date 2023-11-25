@@ -14,30 +14,35 @@
 </head>
 <body>
 <div class="container grid-lg">
-{{ range .FlashError -}}
+{{- range .FlashError }}
   <div class="toast toast-error mt-1" role="alert">
     <button class="btn btn-clear float-right"></button>
     {{ . }}
   </div>
-{{ end -}}
-{{ range .FlashWarning -}}
+{{- end }}
+{{- range .FlashWarning }}
   <div class="toast toast-warning mt-1" role="alert">
     <button class="btn btn-clear float-right"></button>
     {{ . }}
   </div>
-{{ end -}}
-{{ range .FlashSuccess -}}
+{{- end }}
+{{- range .FlashSuccess }}
   <div class="toast toast-success mt-1" role="alert">
     <button class="btn btn-clear float-right"></button>
     {{ . }}
   </div>
-{{ end -}}
-{{ range .FlashMessage -}}
+{{- end }}
+{{- range .FlashMessage }}
   <div class="toast toast-primary mt-1" role="alert">
     <button class="btn btn-clear float-right"></button>
     {{ . }}
   </div>
-{{ end -}}
+{{- end }}
+{{- if .AuthUser }}
+  <div class="text-right my-2">
+    <a href="/logout">Sign out ({{ .AuthUser }})</a>
+  </div>
+{{- end }}
 {{ template "body" .}}
 </div>
 </body>

@@ -4,18 +4,17 @@
   <link rel="stylesheet" href="/static/{{ .Commit }}/css/events.css">
 {{- end }}
 {{- define "body" }}
-  <div class="text-right my-2">
-    <a href="/logout">Sign out ({{ .AuthUser }})</a>
-  </div>
-  <div class="column col-6 col-mx-auto">
-    <form id="hello-form" action="/index" method="post" hx-post="/index" hx-target="#hello-form-target">
-      <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
-      <div class="input-group">
-        <label class="input-group-addon" for="name">Say hello to</label>
-        <input class="form-input" type="text" id="name" name="name" placeholder="World" required autofocus>
-        <button type="submit" class="btn btn-primary input-group-btn">Go</button>
-      </div>
-    </form>
-    <div id="hello-form-target" class="my-2"></div>
+  <div class="columns">
+    <div class="column col-6 col-mx-auto">
+      <form id="hello-form" action="/index" method="post" hx-post="/index" hx-target="#hello-form-target">
+        <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
+        <div class="input-group">
+          <label class="input-group-addon" for="name">Say hello to</label>
+          <input class="form-input" type="text" id="name" name="name" placeholder="World" required autofocus>
+          <button type="submit" class="btn btn-primary input-group-btn">Go</button>
+        </div>
+      </form>
+      <div id="hello-form-target" class="my-2"></div>
+    </div>
   </div>
 {{- end }}
