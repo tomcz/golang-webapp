@@ -3,7 +3,7 @@
   <script src="/static/{{ .Commit }}/js/events.js" defer></script>
   <link rel="stylesheet" href="/static/{{ .Commit }}/css/events.css">
 {{- end }}
-{{- define "body" }}
+{{ define "body" }}
   <div class="columns">
     <div class="column col-6 col-mx-auto">
       <form id="hello-form" action="/index" method="post" hx-post="/index" hx-target="#hello-form-target">
@@ -17,4 +17,4 @@
       <div id="hello-form-target" class="my-2"></div>
     </div>
   </div>
-{{- end }}
+{{ end }}
