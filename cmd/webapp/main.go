@@ -4,12 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/ianschenck/envflag"
 
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/internal/webapp"
@@ -19,30 +23,42 @@ import (
 const development = "development"
 
 var (
-	env string
-	log *slog.Logger
+	env         = envflag.String("ENV", development, "Runtime environment (development or production)")
+	logLevel    = envflag.String("LOG_LEVEL", "INFO", "Logging level (DEBUG, INFO, WARN)")
+	knownUsers  = envflag.String("KNOWN_USERS", "", "Valid (user:password,user2:password2,...) combinations")
+	listenAddr  = envflag.String("LISTEN_ADDR", ":3000", "Bind address")
+	cookieEnc   = envflag.String("COOKIE_ENC_KEY", "", "If not provided a random one will be used")
+	cookieName  = envflag.String("COOKIE_NAME", "example", "Name of HTTP application cookie")
+	tlsCertFile = envflag.String("TLS_CERT_FILE", "", "For HTTPS service, optional")
+	tlsKeyFile  = envflag.String("TLS_KEY_FILE", "", "For HTTPS service, optional")
+	keygen      = flag.Bool("keygen", false, "Print out a new COOKIE_ENC_KEY and exit")
+	log         = slog.Default()
 )
 
 func init() {
-	env = getenv("ENV", development)
-	isDebug := getenv("LOG_DEBUG", "no") == "yes"
-	var opts slog.HandlerOptions
-	if isDebug {
-		opts.Level = slog.LevelDebug
-	} else {
-		opts.Level = slog.LevelInfo
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Fprintf(flag.CommandLine.Output(), "Environment variables:\n")
+		envflag.PrintDefaults()
 	}
-	var h slog.Handler
-	if env == development {
-		h = slog.NewTextHandler(os.Stderr, &opts)
-	} else {
-		h = slog.NewJSONHandler(os.Stderr, &opts)
-	}
-	slog.SetDefault(slog.New(h).With("env", env, "build", build.Version()))
-	log = slog.With("component", "main")
 }
 
 func main() {
+	envflag.Parse()
+	flag.Parse()
+
+	if *keygen {
+		key, err := webapp.RandomKey()
+		if err != nil {
+			log.Error("keygen failed", "error", err)
+			os.Exit(1)
+		}
+		fmt.Println(key)
+		os.Exit(0)
+	}
+
+	log = setupLogging()
 	if err := realMain(); err != nil {
 		log.Error("application failed", "error", err)
 		os.Exit(1)
@@ -51,22 +67,16 @@ func main() {
 }
 
 func realMain() error {
-	knownUsers := getenv("KNOWN_USERS", "")
-	addr := getenv("LISTEN_ADDR", ":3000")
-	cookieEnc := getenv("COOKIE_ENC_KEY", "")
-	cookieName := getenv("COOKIE_NAME", "example")
-	tlsCertFile := getenv("TLS_CERT_FILE", "")
-	tlsKeyFile := getenv("TLS_KEY_FILE", "")
-	withTLS := tlsCertFile != "" && tlsKeyFile != ""
+	withTLS := *tlsCertFile != "" && *tlsKeyFile != ""
 
-	session, err := webapp.NewSessionStore(cookieName, cookieEnc, webapp.CsrfPerSession)
+	session, err := webapp.NewSessionStore(*cookieName, *cookieEnc, webapp.CsrfPerSession)
 	if err != nil {
 		return err
 	}
-	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers(knownUsers)), withTLS)
+	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers()), withTLS)
 
 	server := &http.Server{
-		Addr:    addr,
+		Addr:    *listenAddr,
 		Handler: handler,
 		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
 		// to prevent connections from taking resources indefinitely.
@@ -74,6 +84,7 @@ func realMain() error {
 	if withTLS {
 		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 	}
+
 	go func() {
 		signalCh := make(chan os.Signal, 1)
 		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
@@ -81,10 +92,11 @@ func realMain() error {
 		log.Info("shutdown received")
 		server.Shutdown(context.Background()) //nolint:errcheck
 	}()
-	ll := log.With("addr", addr)
+
+	ll := log.With("addr", *listenAddr)
 	if withTLS {
 		ll.Info("starting server with TLS")
-		err = server.ListenAndServeTLS(tlsCertFile, tlsKeyFile)
+		err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
 	} else {
 		ll.Info("starting server without TLS")
 		err = server.ListenAndServe()
@@ -95,25 +107,35 @@ func realMain() error {
 	return err
 }
 
-func parseKnownUsers(value string) map[string]string {
-	if value == "" {
+func parseKnownUsers() map[string]string {
+	if *knownUsers == "" {
 		return nil
 	}
-	knownUsers := map[string]string{}
-	for _, token := range strings.Split(value, ",") {
+	users := map[string]string{}
+	for _, token := range strings.Split(*knownUsers, ",") {
 		tuple := strings.SplitN(token, ":", 2)
 		if len(tuple) != 2 {
 			continue
 		}
-		knownUsers[tuple[0]] = tuple[1]
+		users[tuple[0]] = tuple[1]
 	}
-	return knownUsers
+	return users
 }
 
-func getenv(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value != "" {
-		return value
+func setupLogging() *slog.Logger {
+	level := slog.LevelInfo
+	level.UnmarshalText([]byte(*logLevel)) //nolint:errcheck
+
+	var opts slog.HandlerOptions
+	opts.Level = level
+
+	var h slog.Handler
+	if *env == development {
+		h = slog.NewTextHandler(os.Stderr, &opts)
+	} else {
+		h = slog.NewJSONHandler(os.Stderr, &opts)
 	}
-	return defaultValue
+
+	slog.SetDefault(slog.New(h).With("env", *env, "build", build.Version()))
+	return slog.With("component", "main")
 }

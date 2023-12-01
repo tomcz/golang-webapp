@@ -7,6 +7,7 @@ require (
 	github.com/google/tink/go v1.7.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
+	github.com/ianschenck/envflag v0.0.0-20140720210342-9111d830d133
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/unrolled/secure v1.10.0
