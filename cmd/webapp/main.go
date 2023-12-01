@@ -26,7 +26,7 @@ var (
 	env         = envflag.String("ENV", development, "Runtime environment (development or production)")
 	logLevel    = envflag.String("LOG_LEVEL", "INFO", "Logging level (DEBUG, INFO, WARN)")
 	knownUsers  = envflag.String("KNOWN_USERS", "", "Valid (user:password,user2:password2,...) combinations")
-	listenAddr  = envflag.String("LISTEN_ADDR", ":3000", "Bind address")
+	listenAddr  = envflag.String("LISTEN_ADDR", ":3000", "Service ip:port bind address")
 	cookieEnc   = envflag.String("COOKIE_ENC_KEY", "", "If not provided a random one will be used")
 	cookieName  = envflag.String("COOKIE_NAME", "example", "Name of HTTP application cookie")
 	tlsCertFile = envflag.String("TLS_CERT_FILE", "", "For HTTPS service, optional")
