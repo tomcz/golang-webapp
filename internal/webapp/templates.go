@@ -1,6 +1,7 @@
 package webapp
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -8,22 +9,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/oxtoacart/bpool"
-
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/templates"
 )
 
 var (
-	tmplCache map[string]*template.Template
-	tmplLock  sync.RWMutex
-	bufPool   *bpool.BufferPool
-)
-
-func init() {
 	tmplCache = make(map[string]*template.Template)
-	bufPool = bpool.NewBufferPool(48) // NOTE: 48 is good enough for example app, maybe not in production
-}
+	tmplLock  sync.RWMutex
+)
 
 func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	RSet(r, "error", err)
@@ -85,8 +78,8 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 		return
 	}
 
-	// add commit info so that we can set versioned static paths
-	// to prevent browsers using old assets with a new version
+	// add commit info so that we can use versioned static paths
+	// to prevent browsers using old assets with new deployments
 	data["Commit"] = build.Commit()
 
 	tmpl, err := newTemplate(cfg.layoutFile, templateFile)
@@ -96,11 +89,9 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 		return
 	}
 
-	// buffer template execution to avoid writing
+	// buffer template execution output to avoid writing
 	// incomplete or malformed content to the response
-	buf := bufPool.Get()
-	defer bufPool.Put(buf)
-
+	buf := &bytes.Buffer{}
 	err = tmpl.ExecuteTemplate(buf, cfg.templateName, data)
 	if err != nil {
 		err = fmt.Errorf("template exec: %w", err)

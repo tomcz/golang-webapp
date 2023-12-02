@@ -8,7 +8,6 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.1
 	github.com/ianschenck/envflag v0.0.0-20140720210342-9111d830d133
-	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/unrolled/secure v1.13.0
 	github.com/urfave/negroni v1.0.0
