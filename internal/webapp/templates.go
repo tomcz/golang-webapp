@@ -1,7 +1,6 @@
 package webapp
 
 import (
-	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -91,14 +90,14 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 
 	// buffer template execution output to avoid writing
 	// incomplete or malformed content to the response
-	buf := &bytes.Buffer{}
+	buf := bufBorrow()
+	defer bufReturn(buf)
 	err = tmpl.ExecuteTemplate(buf, cfg.templateName, data)
 	if err != nil {
 		err = fmt.Errorf("template exec: %w", err)
 		RenderError(w, r, err, "Failed to execute template", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", cfg.contentType)
 	w.WriteHeader(cfg.statusCode)
 	_, err = buf.WriteTo(w)
