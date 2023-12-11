@@ -25,7 +25,7 @@ document.addEventListener("htmx:responseError", function (evt) {
 });
 
 document.addEventListener("htmx:sendError", function (evt) {
-  const error = "Network error, please try again or reload page."
+  const error = "Network error, please try again or reload page.";
 
   const div = document.createElement("div");
   div.classList.add("toast", "toast-error");
