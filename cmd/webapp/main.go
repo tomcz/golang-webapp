@@ -32,6 +32,7 @@ var (
 	tlsCertFile = envflag.String("TLS_CERT_FILE", "", "For HTTPS service, optional")
 	tlsKeyFile  = envflag.String("TLS_KEY_FILE", "", "For HTTPS service, optional")
 	keygen      = flag.Bool("keygen", false, "Print out a new COOKIE_ENC_KEY and exit")
+	version     = flag.Bool("version", false, "Show build version and exit")
 	log         = slog.Default()
 )
 
@@ -55,6 +56,11 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println(key)
+		os.Exit(0)
+	}
+
+	if *version {
+		fmt.Println(build.Version())
 		os.Exit(0)
 	}
 
