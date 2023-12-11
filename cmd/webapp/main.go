@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/ianschenck/envflag"
 
@@ -91,10 +90,11 @@ func realMain() error {
 		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	go func() {
-		signalCh := make(chan os.Signal, 1)
-		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
-		<-signalCh
+		<-ctx.Done()
 		log.Info("shutdown received")
 		server.Shutdown(context.Background()) //nolint:errcheck
 	}()
