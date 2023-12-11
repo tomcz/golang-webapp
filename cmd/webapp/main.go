@@ -132,14 +132,13 @@ func setupLogging() *slog.Logger {
 	level := slog.LevelInfo
 	level.UnmarshalText([]byte(*logLevel)) //nolint:errcheck
 
-	var opts slog.HandlerOptions
-	opts.Level = level
+	opts := &slog.HandlerOptions{Level: level}
 
 	var h slog.Handler
 	if *env == development {
-		h = slog.NewTextHandler(os.Stderr, &opts)
+		h = slog.NewTextHandler(os.Stderr, opts)
 	} else {
-		h = slog.NewJSONHandler(os.Stderr, &opts)
+		h = slog.NewJSONHandler(os.Stderr, opts)
 	}
 
 	slog.SetDefault(slog.New(h).With("env", *env, "build", build.Version()))
