@@ -28,6 +28,7 @@ type renderCfg struct {
 	templateName string
 	statusCode   int
 	contentType  string
+	unbuffered   bool
 }
 
 type RenderOpt func(cfg *renderCfg)
@@ -53,6 +54,12 @@ func RenderWithStatusCode(statusCode int) RenderOpt {
 func RenderWithContentType(contentType string) RenderOpt {
 	return func(cfg *renderCfg) {
 		cfg.contentType = contentType
+	}
+}
+
+func RenderUnbuffered() RenderOpt {
+	return func(cfg *renderCfg) {
+		cfg.unbuffered = true
 	}
 }
 
@@ -88,6 +95,16 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 		return
 	}
 
+	if cfg.unbuffered {
+		w.Header().Set("Content-Type", cfg.contentType)
+		w.WriteHeader(cfg.statusCode)
+		err = tmpl.ExecuteTemplate(w, cfg.templateName, data)
+		if err != nil {
+			RLog(r).Error("unbuffered write failed", "error", err)
+		}
+		return
+	}
+
 	// buffer template execution output to avoid writing
 	// incomplete or malformed content to the response
 	buf := bufBorrow()
@@ -102,7 +119,7 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	w.WriteHeader(cfg.statusCode)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		RLog(r).Error("template write failed", "error", err)
+		RLog(r).Error("buffered write failed", "error", err)
 	}
 }
 
