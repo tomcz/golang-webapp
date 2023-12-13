@@ -26,8 +26,8 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 	var opts []webapp.RenderOpt
 	if r.Header.Get("Hx-Request") == "true" {
 		opts = append(opts,
-			webapp.RenderWithTemplateName("body"),
-			webapp.RenderWithLayoutFile(""),
+			webapp.RenderOptTemplateName("body"),
+			webapp.RenderOptLayoutFile(""),
 		)
 	}
 	data := map[string]any{"Name": name}

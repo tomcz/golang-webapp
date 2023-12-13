@@ -33,31 +33,31 @@ type renderCfg struct {
 
 type RenderOpt func(cfg *renderCfg)
 
-func RenderWithLayoutFile(layoutFile string) RenderOpt {
+func RenderOptLayoutFile(layoutFile string) RenderOpt {
 	return func(cfg *renderCfg) {
 		cfg.layoutFile = layoutFile
 	}
 }
 
-func RenderWithTemplateName(templateName string) RenderOpt {
+func RenderOptTemplateName(templateName string) RenderOpt {
 	return func(cfg *renderCfg) {
 		cfg.templateName = templateName
 	}
 }
 
-func RenderWithStatusCode(statusCode int) RenderOpt {
+func RenderOptStatusCode(statusCode int) RenderOpt {
 	return func(cfg *renderCfg) {
 		cfg.statusCode = statusCode
 	}
 }
 
-func RenderWithContentType(contentType string) RenderOpt {
+func RenderOptContentType(contentType string) RenderOpt {
 	return func(cfg *renderCfg) {
 		cfg.contentType = contentType
 	}
 }
 
-func RenderUnbuffered() RenderOpt {
+func RenderOptUnbuffered() RenderOpt {
 	return func(cfg *renderCfg) {
 		cfg.unbuffered = true
 	}
