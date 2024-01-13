@@ -11,18 +11,20 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/ianschenck/envflag"
+	"github.com/tomcz/gotools/quiet"
 
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/internal/webapp"
 	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
 )
 
-const development = "development"
+const envDevelopment = "development"
 
 var (
-	env         = envflag.String("ENV", development, "Runtime environment (development or production)")
+	env         = envflag.String("ENV", envDevelopment, "Runtime environment (development or production)")
 	logLevel    = envflag.String("LOG_LEVEL", "INFO", "Logging level (DEBUG, INFO, WARN)")
 	knownUsers  = envflag.String("KNOWN_USERS", "", "Valid 'user:password,user2:password2,...' combinations")
 	listenAddr  = envflag.String("LISTEN_ADDR", ":3000", "Service 'ip:port' listen address")
@@ -96,7 +98,7 @@ func realMain() error {
 	go func() {
 		<-ctx.Done()
 		log.Info("shutdown received")
-		server.Shutdown(context.Background()) //nolint:errcheck
+		quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
 	}()
 
 	ll := log.With("addr", *listenAddr)
@@ -135,7 +137,7 @@ func setupLogging() *slog.Logger {
 	opts := &slog.HandlerOptions{Level: level}
 
 	var h slog.Handler
-	if *env == development {
+	if *env == envDevelopment {
 		h = slog.NewTextHandler(os.Stderr, opts)
 	} else {
 		h = slog.NewJSONHandler(os.Stderr, opts)
