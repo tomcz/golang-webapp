@@ -21,7 +21,7 @@ lint:
 
 .PHONY: tidy
 tidy:
-	go mod tidy -compat=1.21
+	go mod tidy
 
 .PHONY: test
 test:
