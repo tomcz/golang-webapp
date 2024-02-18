@@ -29,7 +29,7 @@ var (
 	knownUsers  = envflag.String("KNOWN_USERS", "", "Valid 'user:password,user2:password2,...' combinations")
 	listenAddr  = envflag.String("LISTEN_ADDR", ":3000", "Service 'ip:port' listen address")
 	cookieEnc   = envflag.String("COOKIE_ENC_KEY", "", "If not provided a random one will be used")
-	cookieName  = envflag.String("COOKIE_NAME", "example", "Name of HTTP application cookie")
+	cookieName  = envflag.String("COOKIE_NAME", "_app_session", "Name of HTTP application cookie")
 	tlsCertFile = envflag.String("TLS_CERT_FILE", "", "For HTTPS service, optional")
 	tlsKeyFile  = envflag.String("TLS_KEY_FILE", "", "For HTTPS service, optional")
 	keygen      = flag.Bool("keygen", false, "Print out a new COOKIE_ENC_KEY and exit")
