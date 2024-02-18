@@ -28,8 +28,8 @@ func (m *metadataFields) Set(key string, value any) {
 
 func (m *metadataFields) Slice() []any {
 	args := make([]any, 0, len(m.fields)*2)
-	for k, v := range maps.SortedEntries(m.fields) {
-		args = append(args, k, v)
+	for _, e := range maps.SortedEntries(m.fields) {
+		args = append(args, e.Key, e.Val)
 	}
 	return args
 }
