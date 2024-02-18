@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
@@ -31,12 +32,17 @@ func private(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
 			webapp.RenderError(w, r, err, err.Error(), http.StatusUnauthorized)
 			return
 		}
-		url := r.URL.Path
-		query := r.URL.Query()
-		if len(query) > 0 && !strings.HasPrefix(url, "http") {
-			url = fmt.Sprintf("%s?%s", url, query.Encode())
+		path := r.URL.Path
+		// basic attempt at open-redirect protection
+		if _, err := url.ParseRequestURI(path); err == nil {
+			redirectToLogin(w, r)
+			return
 		}
-		s.Set(afterLoginKey, url)
+		query := r.URL.Query()
+		if len(query) > 0 {
+			path = fmt.Sprintf("%s?%s", path, query.Encode())
+		}
+		s.Set(afterLoginKey, path)
 		redirectToLogin(w, r)
 	})
 }
