@@ -49,7 +49,7 @@ func RId(r *http.Request) string {
 	if md, ok := r.Context().Value(currentMetadataKey).(*metadataFields); ok {
 		return md.requestID
 	}
-	return ""
+	return "XXX"
 }
 
 func RLog(r *http.Request) *slog.Logger {
