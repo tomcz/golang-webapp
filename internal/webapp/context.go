@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	om "github.com/elliotchance/orderedmap/v2"
+	"github.com/tomcz/gotools/maps"
 )
 
 type contextKey string
@@ -17,25 +17,25 @@ const (
 )
 
 type metadataFields struct {
-	fields *om.OrderedMap[string, any]
+	fields map[string]any
 }
 
 func (m *metadataFields) Set(key string, value any) {
 	if value != nil {
-		m.fields.Set(key, value)
+		m.fields[key] = value
 	}
 }
 
 func (m *metadataFields) Slice() []any {
-	args := make([]any, 0, m.fields.Len()*2)
-	for el := m.fields.Front(); el != nil; el = el.Next() {
-		args = append(args, el.Key, el.Value)
+	args := make([]any, 0, len(m.fields)*2)
+	for k, v := range maps.SortedEntries(m.fields) {
+		args = append(args, k, v)
 	}
 	return args
 }
 
 func newMetadataFields() *metadataFields {
-	return &metadataFields{fields: om.NewOrderedMap[string, any]()}
+	return &metadataFields{fields: make(map[string]any)}
 }
 
 func setupContext(r *http.Request, requestID string, log *slog.Logger, md *metadataFields) *http.Request {
