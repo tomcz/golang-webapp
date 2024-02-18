@@ -10,14 +10,13 @@ import (
 
 type contextKey string
 
-const (
-	currentRequestIdKey = contextKey("current.requestId")
-	currentMetadataKey  = contextKey("current.metadata")
-	currentLoggerKey    = contextKey("current.logger")
-)
+const currentMetadataKey = contextKey("current.metadata")
 
 type metadataFields struct {
-	fields map[string]any
+	fields    map[string]any
+	logger    *slog.Logger
+	requestID string
+	isDebug   bool
 }
 
 func (m *metadataFields) Set(key string, value any) {
@@ -34,27 +33,28 @@ func (m *metadataFields) Slice() []any {
 	return args
 }
 
-func newMetadataFields() *metadataFields {
-	return &metadataFields{fields: make(map[string]any)}
+func newMetadataFields(requestID string, log *slog.Logger) *metadataFields {
+	return &metadataFields{
+		fields:    make(map[string]any),
+		logger:    log,
+		requestID: requestID,
+	}
 }
 
-func setupContext(r *http.Request, requestID string, log *slog.Logger, md *metadataFields) *http.Request {
-	ctx := context.WithValue(r.Context(), currentRequestIdKey, requestID)
-	ctx = context.WithValue(ctx, currentMetadataKey, md)
-	ctx = context.WithValue(ctx, currentLoggerKey, log)
-	return r.WithContext(ctx)
+func setupContext(r *http.Request, md *metadataFields) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), currentMetadataKey, md))
 }
 
 func RId(r *http.Request) string {
-	if id, ok := r.Context().Value(currentRequestIdKey).(string); ok {
-		return id
+	if md, ok := r.Context().Value(currentMetadataKey).(*metadataFields); ok {
+		return md.requestID
 	}
 	return ""
 }
 
 func RLog(r *http.Request) *slog.Logger {
-	if log, ok := r.Context().Value(currentLoggerKey).(*slog.Logger); ok {
-		return log
+	if md, ok := r.Context().Value(currentMetadataKey).(*metadataFields); ok {
+		return md.logger
 	}
 	return slog.Default()
 }
@@ -62,5 +62,13 @@ func RLog(r *http.Request) *slog.Logger {
 func RSet(r *http.Request, key string, value any) {
 	if md, ok := r.Context().Value(currentMetadataKey).(*metadataFields); ok {
 		md.Set(key, value)
+	}
+}
+
+// RDebug sets this request to be logged at DEBUG level rather than the INFO default.
+// Useful, for example, for health check endpoints so that they don't flood production logs.
+func RDebug(r *http.Request) {
+	if md, ok := r.Context().Value(currentMetadataKey).(*metadataFields); ok {
+		md.isDebug = true
 	}
 }

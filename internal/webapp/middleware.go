@@ -49,8 +49,8 @@ func requestLogger(next http.Handler) http.Handler {
 
 		reqID := uuid.NewString()
 		log := slog.With("component", "web", "req_id", reqID)
+		fields := newMetadataFields(reqID, log)
 
-		fields := newMetadataFields()
 		fields.Set("req_start_at", start)
 		fields.Set("req_host", r.Host)
 		fields.Set("req_method", r.Method)
@@ -61,7 +61,7 @@ func requestLogger(next http.Handler) http.Handler {
 			fields.Set("req_referer", referer)
 		}
 
-		rr := setupContext(r, reqID, log, fields)
+		rr := setupContext(r, fields)
 		ww := negroni.NewResponseWriter(w)
 
 		next.ServeHTTP(ww, rr)
@@ -76,6 +76,10 @@ func requestLogger(next http.Handler) http.Handler {
 		}
 
 		args := fields.Slice()
-		log.Info("request finished", args...)
+		if fields.isDebug {
+			log.Debug("request finished", args...)
+		} else {
+			log.Info("request finished", args...)
+		}
 	})
 }
