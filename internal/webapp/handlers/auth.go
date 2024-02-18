@@ -33,7 +33,7 @@ func private(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
 		}
 		url := r.URL.Path
 		query := r.URL.Query()
-		if len(query) > 0 {
+		if len(query) > 0 && !strings.HasPrefix(url, "http") {
 			url = fmt.Sprintf("%s?%s", url, query.Encode())
 		}
 		s.Set(afterLoginKey, url)
