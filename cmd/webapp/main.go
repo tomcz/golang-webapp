@@ -26,6 +26,7 @@ const envDevelopment = "development"
 var (
 	env         = envflag.String("ENV", envDevelopment, "Runtime environment (development or production)")
 	logLevel    = envflag.String("LOG_LEVEL", "INFO", "Logging level (DEBUG, INFO, WARN)")
+	logType     = envflag.String("LOG_TYPE", "DEFAULT", "Logger type (DEFAULT, TEXT, JSON)")
 	knownUsers  = envflag.String("KNOWN_USERS", "", "Valid 'user:password,user2:password2,...' combinations")
 	listenAddr  = envflag.String("LISTEN_ADDR", ":3000", "Service 'ip:port' listen address")
 	cookieEnc   = envflag.String("COOKIE_ENC_KEY", "", "If not provided a random one will be used")
@@ -51,17 +52,16 @@ func main() {
 	envflag.Parse()
 	flag.Parse()
 
-	level := slog.LevelInfo
-	if err := level.UnmarshalText([]byte(*logLevel)); err != nil {
-		slog.Error("bad LOG_LEVEL", "error", err)
+	var err error
+	log, err = setupLogging()
+	if err != nil {
+		slog.Error("logging setup failed", "error", err)
 		os.Exit(1)
 	}
-	slog.SetLogLoggerLevel(level)
-	slog.SetDefault(slog.Default().With("env", *env, "build", build.Version()))
-	log = slog.With("component", "main")
 
 	if *keygen {
-		key, err := webapp.RandomKey()
+		var key string
+		key, err = webapp.RandomKey()
 		if err != nil {
 			log.Error("keygen failed", "error", err)
 			os.Exit(1)
@@ -75,7 +75,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if err := realMain(); err != nil {
+	if err = realMain(); err != nil {
 		log.Error("application failed", "error", err)
 		os.Exit(1)
 	}
@@ -137,4 +137,26 @@ func parseKnownUsers() map[string]string {
 		users[tuple[0]] = tuple[1]
 	}
 	return users
+}
+
+func setupLogging() (*slog.Logger, error) {
+	level := slog.LevelInfo
+	if err := level.UnmarshalText([]byte(*logLevel)); err != nil {
+		return nil, fmt.Errorf("bad LOG_LEVEL: %w", err)
+	}
+	logDefaults := []any{"env", *env, "build", build.Version()}
+	switch *logType {
+	case "TEXT":
+		opts := &slog.HandlerOptions{Level: level}
+		h := slog.NewTextHandler(os.Stderr, opts)
+		slog.SetDefault(slog.New(h).With(logDefaults...))
+	case "JSON":
+		opts := &slog.HandlerOptions{Level: level}
+		h := slog.NewJSONHandler(os.Stderr, opts)
+		slog.SetDefault(slog.New(h).With(logDefaults...))
+	default:
+		slog.SetLogLoggerLevel(level)
+		slog.SetDefault(slog.Default().With(logDefaults...))
+	}
+	return slog.With("component", "main"), nil
 }
