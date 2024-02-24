@@ -34,8 +34,9 @@ var (
 	tlsKeyFile  = envflag.String("TLS_KEY_FILE", "", "For HTTPS service, optional")
 	keygen      = flag.Bool("keygen", false, "Print out a new COOKIE_ENC_KEY and exit")
 	version     = flag.Bool("version", false, "Show build version and exit")
-	log         = slog.Default()
 )
+
+var log *slog.Logger
 
 func init() {
 	flag.Usage = func() {
@@ -49,6 +50,15 @@ func init() {
 func main() {
 	envflag.Parse()
 	flag.Parse()
+
+	level := slog.LevelInfo
+	if err := level.UnmarshalText([]byte(*logLevel)); err != nil {
+		slog.Error("bad LOG_LEVEL", "error", err)
+		os.Exit(1)
+	}
+	slog.SetLogLoggerLevel(level)
+	slog.SetDefault(slog.Default().With("env", *env, "build", build.Version()))
+	log = slog.With("component", "main")
 
 	if *keygen {
 		key, err := webapp.RandomKey()
@@ -65,7 +75,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	log = setupLogging()
 	if err := realMain(); err != nil {
 		log.Error("application failed", "error", err)
 		os.Exit(1)
@@ -128,13 +137,4 @@ func parseKnownUsers() map[string]string {
 		users[tuple[0]] = tuple[1]
 	}
 	return users
-}
-
-func setupLogging() *slog.Logger {
-	level := slog.LevelInfo
-	level.UnmarshalText([]byte(*logLevel)) //nolint:errcheck
-	slog.SetLogLoggerLevel(level)
-
-	slog.SetDefault(log.With("env", *env, "build", build.Version()))
-	return slog.With("component", "main")
 }
