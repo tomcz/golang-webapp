@@ -1,6 +1,6 @@
 module github.com/tomcz/golang-webapp
 
-go 1.21
+go 1.22
 
 require (
 	github.com/google/tink/go v1.7.0

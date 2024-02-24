@@ -133,16 +133,8 @@ func parseKnownUsers() map[string]string {
 func setupLogging() *slog.Logger {
 	level := slog.LevelInfo
 	level.UnmarshalText([]byte(*logLevel)) //nolint:errcheck
+	slog.SetLogLoggerLevel(level)
 
-	opts := &slog.HandlerOptions{Level: level}
-
-	var h slog.Handler
-	if *env == envDevelopment {
-		h = slog.NewTextHandler(os.Stderr, opts)
-	} else {
-		h = slog.NewJSONHandler(os.Stderr, opts)
-	}
-
-	slog.SetDefault(slog.New(h).With("env", *env, "build", build.Version()))
+	slog.SetDefault(log.With("env", *env, "build", build.Version()))
 	return slog.With("component", "main")
 }
