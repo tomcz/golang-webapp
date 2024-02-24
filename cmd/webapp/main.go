@@ -145,7 +145,7 @@ func setupLogging() (*slog.Logger, error) {
 		return nil, fmt.Errorf("bad LOG_LEVEL: %w", err)
 	}
 	logDefaults := []any{"env", *env, "build", build.Version()}
-	switch *logType {
+	switch strings.ToUpper(*logType) {
 	case "TEXT":
 		opts := &slog.HandlerOptions{Level: level}
 		h := slog.NewTextHandler(os.Stderr, opts)
