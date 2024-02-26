@@ -12,10 +12,9 @@ import (
 	"github.com/tomcz/golang-webapp/templates"
 )
 
-var (
-	tmplCache = make(map[string]*template.Template)
-	tmplLock  sync.RWMutex
-)
+// Generally we will write once and read many times so using a sync.Map
+// is preferred as it reduces lock contention compared to a sync.RWMutex.
+var tmplCache sync.Map
 
 func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	RSet(r, "error", err)
@@ -129,11 +128,8 @@ func newTemplate(templatePaths ...string) (*template.Template, error) {
 	var cacheKey string
 	if build.IsProd {
 		cacheKey = strings.Join(templatePaths, ",")
-		tmplLock.RLock()
-		tmpl, ok := tmplCache[cacheKey]
-		tmplLock.RUnlock()
-		if ok {
-			return tmpl, nil
+		if cached, ok := tmplCache.Load(cacheKey); ok {
+			return cached.(*template.Template), nil
 		}
 	}
 	tmpl := template.New("")
@@ -151,9 +147,7 @@ func newTemplate(templatePaths ...string) (*template.Template, error) {
 		}
 	}
 	if build.IsProd {
-		tmplLock.Lock()
-		tmplCache[cacheKey] = tmpl
-		tmplLock.Unlock()
+		tmplCache.Store(cacheKey, tmpl)
 	}
 	return tmpl, nil
 }
