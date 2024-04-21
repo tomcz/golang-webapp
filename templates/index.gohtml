@@ -6,12 +6,14 @@
   <div class="columns">
     <div class="column col-6 col-mx-auto">
       <form id="hello-form" action="/index" method="post" hx-post="/index" hx-target="#hello-form-target">
-        <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
-        <div class="input-group">
-          <label class="input-group-addon" for="name">Say hello to</label>
-          <input class="form-input" type="text" id="name" name="name" placeholder="World" required autofocus>
-          <button type="submit" class="btn btn-primary input-group-btn">Go</button>
-        </div>
+        <fieldset>
+          <input type="hidden" name="_csrf_token" value="{{ .CsrfToken }}">
+          <div class="input-group">
+            <label class="input-group-addon" for="name">Say hello to</label>
+            <input class="form-input" type="text" id="name" name="name" placeholder="World" required autofocus>
+            <button type="submit" class="btn btn-primary input-group-btn">Go</button>
+          </div>
+        </fieldset>
       </form>
       <div id="hello-form-target" class="my-2"></div>
     </div>
