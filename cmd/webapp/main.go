@@ -29,8 +29,9 @@ var (
 	logType     = envflag.String("LOG_TYPE", "DEFAULT", "Logger type (DEFAULT, TEXT, JSON)")
 	knownUsers  = envflag.String("KNOWN_USERS", "", "Valid 'user:password,user2:password2,...' combinations")
 	listenAddr  = envflag.String("LISTEN_ADDR", ":3000", "Service 'ip:port' listen address")
-	cookieEnc   = envflag.String("COOKIE_ENC_KEY", "", "If not provided a random one will be used")
 	cookieName  = envflag.String("COOKIE_NAME", "_app_session", "Name of HTTP application cookie")
+	cookieAuth  = envflag.String("COOKIE_AUTH_KEY", "", "If not provided a random one will be used")
+	cookieEnc   = envflag.String("COOKIE_ENC_KEY", "", "If not provided a random one will be used")
 	tlsCertFile = envflag.String("TLS_CERT_FILE", "", "For HTTPS service, optional")
 	tlsKeyFile  = envflag.String("TLS_KEY_FILE", "", "For HTTPS service, optional")
 	keygen      = flag.Bool("keygen", false, "Print out a new COOKIE_ENC_KEY and exit")
@@ -60,13 +61,8 @@ func main() {
 	}
 
 	if *keygen {
-		var key string
-		key, err = webapp.RandomKey()
-		if err != nil {
-			log.Error("keygen failed", "error", err)
-			os.Exit(1)
-		}
-		fmt.Println(key)
+		fmt.Println("COOKIE_AUTH_KEY:", webapp.EncodeRandomKey())
+		fmt.Println("COOKIE_ENC_KEY: ", webapp.EncodeRandomKey())
 		os.Exit(0)
 	}
 
@@ -85,7 +81,7 @@ func main() {
 func realMain() error {
 	withTLS := *tlsCertFile != "" && *tlsKeyFile != ""
 
-	session, err := webapp.NewSessionStore(*cookieName, *cookieEnc, webapp.CsrfPerSession)
+	session, err := webapp.NewSessionStore(*cookieName, *cookieAuth, *cookieEnc, webapp.CsrfPerSession)
 	if err != nil {
 		return err
 	}
@@ -141,7 +137,9 @@ func parseKnownUsers() map[string]string {
 
 func setupLogging() (*slog.Logger, error) {
 	level := slog.LevelInfo
-	if err := level.UnmarshalText([]byte(*logLevel)); err != nil {
+	//goland:noinspection GoDfaNilDereference
+	err := level.UnmarshalText([]byte(*logLevel))
+	if err != nil {
 		return nil, fmt.Errorf("bad LOG_LEVEL: %w", err)
 	}
 	logDefaults := []any{"env", *env, "build", build.Version()}

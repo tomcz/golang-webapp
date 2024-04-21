@@ -2,12 +2,17 @@ package webapp
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/securecookie"
+	"github.com/gorilla/sessions"
 )
+
+const keyLength = 32 // bytes -> AES-256
 
 const (
 	CsrfFormToken  = "_csrf_token"
@@ -57,42 +62,54 @@ type Session interface {
 
 type sessionStore struct {
 	csrf  CsrfProtection
-	codec *sessionCodec
+	store sessions.Store
+	name  string
 }
 
 type currentSession struct {
-	session map[string]any
 	csrf    CsrfProtection
-	codec   *sessionCodec
+	session *sessions.Session
 }
 
-func NewSessionStore(sessionName, sessionKey string, csrf CsrfProtection) (SessionStore, error) {
-	keyBytes, err := keyToBytes(sessionKey)
-	if err != nil {
-		return nil, err
+func EncodeRandomKey() string {
+	return base64.StdEncoding.EncodeToString(randomKey())
+}
+
+func randomKey() []byte {
+	key := securecookie.GenerateRandomKey(keyLength)
+	if len(key) == 0 {
+		panic("cannot generate a random key")
 	}
+	return key
+}
+
+func keyBytes(key string) []byte {
+	if key == "" {
+		return randomKey()
+	}
+	buf, err := base64.StdEncoding.DecodeString(key)
+	if err != nil || len(buf) != keyLength {
+		return randomKey()
+	}
+	return buf
+}
+
+func NewSessionStore(cookieName, authKey, encKey string, csrf CsrfProtection) (SessionStore, error) {
+	store := sessions.NewCookieStore(keyBytes(authKey), keyBytes(encKey))
+	store.MaxAge(int((30 * 24 * time.Hour).Seconds())) // 30 days
 	return &sessionStore{
-		csrf: csrf,
-		codec: &sessionCodec{
-			name:   sessionName,
-			key:    keyBytes,
-			maxAge: 30 * 24 * time.Hour,
-			path:   "/",
-		},
+		csrf:  csrf,
+		store: store,
+		name:  cookieName,
 	}, nil
 }
 
 func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, err := s.codec.getSession(r)
-		if err != nil {
-			RLog(r).Debug("session codec failed", "error", err)
-			session = make(map[string]any)
-		}
+		session, _ := s.store.Get(r, s.name)
 		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{
 			session: session,
 			csrf:    s.csrf,
-			codec:   s.codec,
 		})
 		r = r.WithContext(ctx)
 		if s.csrfSafe(w, r) {
@@ -192,7 +209,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if s == nil {
 		return true // no session to save
 	}
-	err := s.codec.setSession(w, r, s.session)
+	err := s.session.Save(r, w)
 	if err != nil {
 		err = fmt.Errorf("session save: %w", err)
 		RenderError(w, r, err, "Failed to save session", http.StatusInternalServerError)
@@ -202,11 +219,11 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (c *currentSession) Set(key string, value any) {
-	c.session[key] = value
+	c.session.Values[key] = value
 }
 
 func (c *currentSession) Get(key string) (any, bool) {
-	value, found := c.session[key]
+	value, found := c.session.Values[key]
 	return value, found
 }
 
@@ -236,28 +253,17 @@ func (c *currentSession) AddFlashError(msg string) {
 }
 
 func (c *currentSession) addFlash(key, msg string) {
-	c.Set(key, append(c.getFlash(key), msg))
+	c.session.AddFlash(msg, key)
 }
 
-func (c *currentSession) getFlash(key string) []string {
-	if value, found := c.Get(key); found {
-		if flash, ok := value.([]string); ok {
-			return flash
-		}
-	}
-	return nil
-}
-
-func (c *currentSession) popFlash(key string) []string {
-	flash := c.getFlash(key)
-	c.Delete(key)
-	return flash
+func (c *currentSession) popFlash(key string) []any {
+	return c.session.Flashes(key)
 }
 
 func (c *currentSession) Delete(key string) {
-	delete(c.session, key)
+	delete(c.session.Values, key)
 }
 
 func (c *currentSession) Clear() {
-	c.session = make(map[string]any)
+	c.session.Options.MaxAge = -1
 }
