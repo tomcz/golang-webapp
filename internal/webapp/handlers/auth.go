@@ -62,7 +62,7 @@ func handleLogin(knownUsers map[string]string) http.HandlerFunc {
 		webapp.AddToSpan(r, "auth_user", username)
 		s.AddFlashMessage(fmt.Sprintf("Welcome %s!", username))
 		if url := s.GetString(afterLoginKey); url != "" {
-			webapp.RedirectToUrl(w, r, url)
+			webapp.RedirectTo(w, r, url)
 			return
 		}
 		redirectToIndex(w, r)

@@ -1,12 +1,11 @@
 module github.com/tomcz/golang-webapp
 
-go 1.20
+go 1.22
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/google/tink/go v1.7.0
 	github.com/google/uuid v1.3.0
-	github.com/gorilla/mux v1.8.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/tomcz/gotools v0.4.3

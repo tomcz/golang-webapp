@@ -39,10 +39,10 @@ build-dev: target
 build-prod: target
 	go build -tags prod -ldflags "${LDFLAGS}" -o target ./cmd...
 
-.PHONY: run-dev
-run-dev: build-dev
+.PHONY: dev
+dev: build-dev
 	./target/webapp
 
-.PHONY: run-prod
-run-prod: build-prod
+.PHONY: prod
+prod: build-prod
 	./target/webapp

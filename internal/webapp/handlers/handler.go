@@ -10,26 +10,26 @@ func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handle
 	r := webapp.NewRouter()
 
 	// no session
-	r.Handle("/", http.RedirectHandler("/index", http.StatusFound)).Name("root")
-	r.HandleFunc("/error", exampleError).Name("exampleError")
-	r.HandleFunc("/panic", examplePanic).Name("examplePanic")
+	r.Handle("root", "/", http.RedirectHandler("/index", http.StatusFound))
+	r.HandleFunc("exampleError", "/error", exampleError)
+	r.HandleFunc("examplePanic", "/panic", examplePanic)
 
 	// unauthenticated, with session
-	r.HandleFunc("/login", public(s, showLogin)).Name("showLogin").Methods(http.MethodGet)
-	r.HandleFunc("/login", public(s, handleLogin(knownUsers))).Name("handleLogin").Methods(http.MethodPost)
-	r.HandleFunc("/logout", public(s, handleLogout)).Name("handleLogout")
+	r.HandleFunc("showLogin", "GET /login", public(s, showLogin))
+	r.HandleFunc("handleLogin", "POST /login", public(s, handleLogin(knownUsers)))
+	r.HandleFunc("handleLogout", "/logout", public(s, handleLogout))
 
 	// authenticated, session required
-	r.HandleFunc("/index", private(s, showIndex)).Name("showIndex").Methods(http.MethodGet)
-	r.HandleFunc("/index", private(s, updateIndex)).Name("updateIndex").Methods(http.MethodPost)
+	r.HandleFunc("showIndex", "GET /index", private(s, showIndex))
+	r.HandleFunc("updateIndex", "POST /index", private(s, updateIndex))
 
-	return r
+	return r.Handler()
 }
 
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	webapp.RedirectTo(w, r, "showLogin")
+	webapp.RedirectTo(w, r, "/login")
 }
 
 func redirectToIndex(w http.ResponseWriter, r *http.Request) {
-	webapp.RedirectTo(w, r, "showIndex")
+	webapp.RedirectTo(w, r, "/index")
 }
