@@ -265,5 +265,6 @@ func (c *currentSession) Delete(key string) {
 }
 
 func (c *currentSession) Clear() {
+	c.session.Values = map[any]any{}
 	c.session.Options.MaxAge = -1
 }
