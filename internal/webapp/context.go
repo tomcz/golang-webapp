@@ -4,8 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-
-	"github.com/tomcz/gotools/maps"
+	"slices"
 )
 
 type contextKey string
@@ -26,9 +25,14 @@ func (m *metadataFields) Set(key string, value any) {
 }
 
 func (m *metadataFields) Slice() []any {
-	args := make([]any, 0, len(m.fields)*2)
-	for _, e := range maps.SortedEntries(m.fields) {
-		args = append(args, e.Key, e.Val)
+	var keys []string
+	for key := range m.fields {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	var args []any
+	for _, key := range keys {
+		args = append(args, key, m.fields[key])
 	}
 	return args
 }
@@ -71,7 +75,7 @@ func RSet(r *http.Request, key string, value any) {
 }
 
 // RDebug sets this request to be logged at DEBUG level rather than the INFO default.
-// Useful, for example, for health check endpoints so that they don't flood production logs.
+// Useful, for example, in health check endpoints so that they don't flood production logs.
 func RDebug(r *http.Request) {
 	if md, ok := currentMetadataFields(r); ok {
 		md.isDebug = true

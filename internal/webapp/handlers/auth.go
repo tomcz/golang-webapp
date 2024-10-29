@@ -28,6 +28,7 @@ func private(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if r.Header.Get("Hx-Request") == "true" {
+			//goland:noinspection GoErrorStringFormat
 			err := fmt.Errorf("Unauthorised, please reload page to sign in.")
 			webapp.RenderError(w, r, err, err.Error(), http.StatusUnauthorized)
 			return

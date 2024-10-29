@@ -7,29 +7,30 @@ import (
 )
 
 func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handler {
-	r := webapp.NewRouter()
+	mux := http.NewServeMux()
 
 	// no session
-	r.Handle("/", http.RedirectHandler("/index", http.StatusFound)).Name("root")
-	r.HandleFunc("/error", exampleError).Name("exampleError")
-	r.HandleFunc("/panic", examplePanic).Name("examplePanic")
+	mux.Handle("/", http.RedirectHandler("/index", http.StatusFound))
+	mux.HandleFunc("/error", exampleError)
+	mux.HandleFunc("/panic", examplePanic)
 
 	// unauthenticated, with session
-	r.HandleFunc("/login", public(s, showLogin)).Name("showLogin").Methods(http.MethodGet)
-	r.HandleFunc("/login", public(s, handleLogin(knownUsers))).Name("handleLogin").Methods(http.MethodPost)
-	r.HandleFunc("/logout", public(s, handleLogout)).Name("handleLogout")
+	mux.HandleFunc("GET /login", public(s, showLogin))
+	mux.HandleFunc("POST /login", public(s, handleLogin(knownUsers)))
+	mux.HandleFunc("/logout", public(s, handleLogout))
 
 	// authenticated, session required
-	r.HandleFunc("/index", private(s, showIndex)).Name("showIndex").Methods(http.MethodGet)
-	r.HandleFunc("/index", private(s, updateIndex)).Name("updateIndex").Methods(http.MethodPost)
+	mux.HandleFunc("GET /index", private(s, showIndex))
+	mux.HandleFunc("POST /index", private(s, updateIndex))
 
-	return r
+	webapp.RegisterStaticAssetRoutes(mux)
+	return webapp.DynamicCacheControl(mux)
 }
 
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	webapp.RedirectTo(w, r, "showLogin")
+	webapp.RedirectToUrl(w, r, "/login")
 }
 
 func redirectToIndex(w http.ResponseWriter, r *http.Request) {
-	webapp.RedirectTo(w, r, "showIndex")
+	webapp.RedirectToUrl(w, r, "/index")
 }

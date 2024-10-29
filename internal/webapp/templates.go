@@ -12,10 +12,6 @@ import (
 	"github.com/tomcz/golang-webapp/templates"
 )
 
-// Generally we will write once and read many times so using a sync.Map
-// is preferred as it reduces lock contention compared to a sync.RWMutex.
-var tmplCache sync.Map
-
 func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	RSet(r, "error", err)
 	msg = fmt.Sprintf("ID: %s\nError: %s\n", RId(r), msg)
@@ -121,6 +117,10 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 		RLog(r).Error("buffered write failed", "error", err)
 	}
 }
+
+// Generally we will write once and read many times so using a sync.Map
+// is preferred as it reduces lock contention compared to a sync.RWMutex.
+var tmplCache sync.Map
 
 func newTemplate(templatePaths ...string) (*template.Template, error) {
 	// no need to recreate templates in prod builds
