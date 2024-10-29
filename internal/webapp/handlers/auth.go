@@ -15,12 +15,12 @@ const (
 	afterLoginKey = "AfterLogin"
 )
 
-func public(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
-	return ss.Wrap(next)
+func public(sw webapp.SessionWrapper, next http.HandlerFunc) http.HandlerFunc {
+	return sw.Wrap(next)
 }
 
-func private(ss webapp.SessionStore, next http.HandlerFunc) http.HandlerFunc {
-	return ss.Wrap(func(w http.ResponseWriter, r *http.Request) {
+func private(sw webapp.SessionWrapper, next http.HandlerFunc) http.HandlerFunc {
+	return sw.Wrap(func(w http.ResponseWriter, r *http.Request) {
 		s := webapp.CurrentSession(r)
 		if user := s.GetString(authUserKey); user != "" {
 			webapp.RSet(r, "auth_user", user)

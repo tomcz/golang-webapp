@@ -102,8 +102,8 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 
 	// buffer template execution output to avoid writing
 	// incomplete or malformed content to the response
-	buf := bufBorrow()
-	defer bufReturn(buf)
+	buf := BufBorrow()
+	defer BufReturn(buf)
 	err = tmpl.ExecuteTemplate(buf, cfg.templateName, data)
 	if err != nil {
 		err = fmt.Errorf("template exec: %w", err)

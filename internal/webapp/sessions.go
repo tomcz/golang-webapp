@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -39,7 +38,7 @@ const (
 	sessionFlashError   = "_Flash_Error_"
 )
 
-type SessionStore interface {
+type SessionWrapper interface {
 	Wrap(fn http.HandlerFunc) http.HandlerFunc
 }
 
@@ -55,36 +54,32 @@ type Session interface {
 	Clear()
 }
 
-type sessionStore struct {
+type SessionStore interface {
+	SetSession(w http.ResponseWriter, r *http.Request, session map[string]any) error
+	GetSession(r *http.Request) (map[string]any, error)
+}
+
+type sessionWrapper struct {
 	csrf  CsrfProtection
-	codec *sessionCodec
+	store SessionStore
 }
 
 type currentSession struct {
 	session map[string]any
 	csrf    CsrfProtection
-	codec   *sessionCodec
+	store   SessionStore
 }
 
-func NewSessionStore(sessionName, sessionKey string, csrf CsrfProtection) (SessionStore, error) {
-	keyBytes, err := keyToBytes(sessionKey)
-	if err != nil {
-		return nil, err
+func NewSessionWrapper(codec SessionStore, csrf CsrfProtection) SessionWrapper {
+	return &sessionWrapper{
+		csrf:  csrf,
+		store: codec,
 	}
-	return &sessionStore{
-		csrf: csrf,
-		codec: &sessionCodec{
-			name:   sessionName,
-			key:    keyBytes,
-			maxAge: 30 * 24 * time.Hour,
-			path:   "/",
-		},
-	}, nil
 }
 
-func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
+func (s *sessionWrapper) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, err := s.codec.getSession(r)
+		session, err := s.store.GetSession(r)
 		if err != nil {
 			RLog(r).Debug("session codec failed", "error", err)
 			session = make(map[string]any)
@@ -92,7 +87,7 @@ func (s *sessionStore) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{
 			session: session,
 			csrf:    s.csrf,
-			codec:   s.codec,
+			store:   s.store,
 		})
 		r = r.WithContext(ctx)
 		if s.csrfSafe(w, r) {
@@ -109,7 +104,7 @@ var csrfSafeMethods = map[string]bool{
 	http.MethodTrace:   true,
 }
 
-func (s *sessionStore) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
+func (s *sessionWrapper) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	if csrfSafeMethods[r.Method] {
 		return true
 	}
@@ -192,7 +187,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if s == nil {
 		return true // no session to save
 	}
-	err := s.codec.setSession(w, r, s.session)
+	err := s.store.SetSession(w, r, s.session)
 	if err != nil {
 		err = fmt.Errorf("session save: %w", err)
 		RenderError(w, r, err, "Failed to save session", http.StatusInternalServerError)

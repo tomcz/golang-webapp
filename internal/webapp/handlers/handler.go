@@ -6,7 +6,7 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp"
 )
 
-func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handler {
+func NewHandler(sw webapp.SessionWrapper, knownUsers map[string]string) http.Handler {
 	mux := http.NewServeMux()
 
 	// no session
@@ -15,13 +15,13 @@ func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handle
 	mux.HandleFunc("/panic", examplePanic)
 
 	// unauthenticated, with session
-	mux.HandleFunc("GET /login", public(s, showLogin))
-	mux.HandleFunc("POST /login", public(s, handleLogin(knownUsers)))
-	mux.HandleFunc("/logout", public(s, handleLogout))
+	mux.HandleFunc("GET /login", public(sw, showLogin))
+	mux.HandleFunc("POST /login", public(sw, handleLogin(knownUsers)))
+	mux.HandleFunc("/logout", public(sw, handleLogout))
 
 	// authenticated, session required
-	mux.HandleFunc("GET /index", private(s, showIndex))
-	mux.HandleFunc("POST /index", private(s, updateIndex))
+	mux.HandleFunc("GET /index", private(sw, showIndex))
+	mux.HandleFunc("POST /index", private(sw, updateIndex))
 
 	webapp.RegisterStaticAssetRoutes(mux)
 	return webapp.DynamicCacheControl(mux)

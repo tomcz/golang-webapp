@@ -1,4 +1,4 @@
-package webapp
+package cookie
 
 import (
 	"net/http"
@@ -14,7 +14,7 @@ func TestCodecRoundTrip(t *testing.T) {
 	key, err := randomKey()
 	assert.NilError(t, err)
 
-	codec := &sessionCodec{
+	codec := &cookieStore{
 		name:   "test",
 		key:    key,
 		maxAge: 24 * time.Hour,
@@ -37,7 +37,7 @@ func TestCodecCookie(t *testing.T) {
 	key, err := randomKey()
 	assert.NilError(t, err)
 
-	codec := &sessionCodec{
+	codec := &cookieStore{
 		name:   "test",
 		key:    key,
 		maxAge: 24 * time.Hour,
@@ -47,7 +47,7 @@ func TestCodecCookie(t *testing.T) {
 	data := map[string]any{"wibble": "wobble"}
 	outReq := httptest.NewRequest(http.MethodGet, "https://example.com/foo", nil)
 	outRes := httptest.NewRecorder()
-	err = codec.setSession(outRes, outReq, data)
+	err = codec.SetSession(outRes, outReq, data)
 	assert.NilError(t, err)
 
 	cookies := outRes.Result().Cookies()
@@ -61,7 +61,7 @@ func TestCodecCookie(t *testing.T) {
 
 	inReq := httptest.NewRequest(http.MethodGet, "/bar", nil)
 	inReq.Header.Set("Cookie", cookie.String())
-	actual, err := codec.getSession(inReq)
+	actual, err := codec.GetSession(inReq)
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, data, actual)

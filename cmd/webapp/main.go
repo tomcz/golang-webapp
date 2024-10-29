@@ -14,6 +14,7 @@ import (
 
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/internal/webapp"
+	"github.com/tomcz/golang-webapp/internal/webapp/cookie"
 	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
 )
 
@@ -56,7 +57,7 @@ func main() {
 
 	if *keygen {
 		var key string
-		key, err = webapp.RandomKey()
+		key, err = cookie.RandomKey()
 		if err != nil {
 			log.Error("keygen failed", "error", err)
 			os.Exit(1)
@@ -80,10 +81,12 @@ func main() {
 func realMain() error {
 	withTLS := *tlsCertFile != "" && *tlsKeyFile != ""
 
-	session, err := webapp.NewSessionStore(*cookieName, *cookieEnc, webapp.CsrfPerSession)
+	store, err := cookie.Store(*cookieName, *cookieEnc)
 	if err != nil {
 		return err
 	}
+
+	session := webapp.NewSessionWrapper(store, webapp.CsrfPerSession)
 	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers()), withTLS)
 
 	server := &http.Server{

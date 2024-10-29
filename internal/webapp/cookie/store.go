@@ -1,4 +1,4 @@
-package webapp
+package cookie
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/tink-crypto/tink-go/v2/aead/subtle"
+
+	"github.com/tomcz/golang-webapp/internal/webapp"
 )
 
 const sessionExpiresAt = "_Expires_At_"
@@ -46,14 +48,27 @@ func keyToBytes(key string) ([]byte, error) {
 	return buf, nil
 }
 
-type sessionCodec struct {
+type cookieStore struct {
 	name   string
 	key    []byte
 	maxAge time.Duration
 	path   string
 }
 
-func (c *sessionCodec) setSession(w http.ResponseWriter, r *http.Request, session map[string]any) error {
+func Store(sessionName, sessionKey string) (webapp.SessionStore, error) {
+	keyBytes, err := keyToBytes(sessionKey)
+	if err != nil {
+		return nil, err
+	}
+	return &cookieStore{
+		name:   sessionName,
+		key:    keyBytes,
+		maxAge: 30 * 24 * time.Hour,
+		path:   "/",
+	}, nil
+}
+
+func (c *cookieStore) SetSession(w http.ResponseWriter, r *http.Request, session map[string]any) error {
 	if len(session) == 0 {
 		cookie := &http.Cookie{
 			Name:     c.name,
@@ -83,7 +98,7 @@ func (c *sessionCodec) setSession(w http.ResponseWriter, r *http.Request, sessio
 	return nil
 }
 
-func (c *sessionCodec) getSession(r *http.Request) (map[string]any, error) {
+func (c *cookieStore) GetSession(r *http.Request) (map[string]any, error) {
 	cookie, err := r.Cookie(c.name)
 	if err != nil {
 		return nil, err
@@ -91,13 +106,13 @@ func (c *sessionCodec) getSession(r *http.Request) (map[string]any, error) {
 	return c.decode(cookie.Value, time.Now())
 }
 
-func (c *sessionCodec) encode(session map[string]any, expiresAt time.Time) (string, error) {
+func (c *cookieStore) encode(session map[string]any, expiresAt time.Time) (string, error) {
 	session[sessionExpiresAt] = expiresAt
 	defer func() {
 		delete(session, sessionExpiresAt)
 	}()
-	buf := bufBorrow()
-	defer bufReturn(buf)
+	buf := webapp.BufBorrow()
+	defer webapp.BufReturn(buf)
 	err := gob.NewEncoder(buf).Encode(session)
 	if err != nil {
 		return "", fmt.Errorf("gob.encode: %w", err)
@@ -113,7 +128,7 @@ func (c *sessionCodec) encode(session map[string]any, expiresAt time.Time) (stri
 	return base64.URLEncoding.EncodeToString(cipherText), nil
 }
 
-func (c *sessionCodec) decode(cookieValue string, now time.Time) (map[string]any, error) {
+func (c *cookieStore) decode(cookieValue string, now time.Time) (map[string]any, error) {
 	cipherText, err := base64.URLEncoding.DecodeString(cookieValue)
 	if err != nil {
 		return nil, fmt.Errorf("cookieValue.decode: %w", err)

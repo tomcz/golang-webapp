@@ -11,11 +11,11 @@ var bufPool = sync.Pool{
 	},
 }
 
-func bufBorrow() *bytes.Buffer {
+func BufBorrow() *bytes.Buffer {
 	return bufPool.Get().(*bytes.Buffer)
 }
 
-func bufReturn(b *bytes.Buffer) {
+func BufReturn(b *bytes.Buffer) {
 	b.Reset()
 	bufPool.Put(b)
 }
