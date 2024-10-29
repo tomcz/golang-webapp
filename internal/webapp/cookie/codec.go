@@ -43,7 +43,7 @@ func keyToBytes(key string) ([]byte, error) {
 	return buf, nil
 }
 
-type cookieStore struct {
+type cookieCodec struct {
 	key   []byte
 	clock clock.PassiveClock
 }
@@ -53,17 +53,17 @@ func New(sessionKey string) (webapp.SessionCodec, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &cookieStore{
+	return &cookieCodec{
 		key:   keyBytes,
 		clock: clock.RealClock{},
 	}, nil
 }
 
-func (c *cookieStore) Close() error {
+func (c *cookieCodec) Close() error {
 	return nil
 }
 
-func (c *cookieStore) Encode(_ context.Context, session map[string]any, maxAge time.Duration) (string, error) {
+func (c *cookieCodec) Encode(_ context.Context, session map[string]any, maxAge time.Duration) (string, error) {
 	session[sessionExpiresAt] = c.clock.Now().Add(maxAge)
 	defer func() {
 		delete(session, sessionExpiresAt)
@@ -90,7 +90,7 @@ func (c *cookieStore) Encode(_ context.Context, session map[string]any, maxAge t
 	return base64.URLEncoding.EncodeToString(cipherText), nil
 }
 
-func (c *cookieStore) Decode(_ context.Context, value string) (map[string]any, error) {
+func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, error) {
 	cipherText, err := base64.URLEncoding.DecodeString(value)
 	if err != nil {
 		return nil, fmt.Errorf("value.decode: %w", err)

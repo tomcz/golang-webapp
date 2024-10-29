@@ -18,7 +18,7 @@ import (
 
 const redisKeyName = "_Redis_Key_"
 
-type redisStore struct {
+type redisCodec struct {
 	rdb *redis.Client
 }
 
@@ -29,7 +29,7 @@ func New(address, username, password, tlsType string) webapp.SessionCodec {
 		Password:  password,
 		TLSConfig: redisTLS(tlsType),
 	})
-	return &redisStore{rdb}
+	return &redisCodec{rdb}
 }
 
 func redisTLS(tlsType string) *tls.Config {
@@ -43,11 +43,11 @@ func redisTLS(tlsType string) *tls.Config {
 	}
 }
 
-func (s *redisStore) Close() error {
-	return s.rdb.Close()
+func (c *redisCodec) Close() error {
+	return c.rdb.Close()
 }
 
-func (s *redisStore) Encode(ctx context.Context, session map[string]any, maxAge time.Duration) (string, error) {
+func (c *redisCodec) Encode(ctx context.Context, session map[string]any, maxAge time.Duration) (string, error) {
 	buf := webapp.BufBorrow()
 	defer webapp.BufReturn(buf)
 
@@ -63,7 +63,7 @@ func (s *redisStore) Encode(ctx context.Context, session map[string]any, maxAge 
 	}
 
 	value := base64.StdEncoding.EncodeToString(buf.Bytes())
-	if err := s.rdb.Set(ctx, key, value, maxAge).Err(); err != nil {
+	if err := c.rdb.Set(ctx, key, value, maxAge).Err(); err != nil {
 		return "", fmt.Errorf("redis.Set: %w", err)
 	}
 	return key, nil
@@ -71,12 +71,12 @@ func (s *redisStore) Encode(ctx context.Context, session map[string]any, maxAge 
 
 var validKeyPattern = regexp.MustCompile(`^[[:xdigit:]]{64}$`)
 
-func (s *redisStore) Decode(ctx context.Context, key string) (map[string]any, error) {
+func (c *redisCodec) Decode(ctx context.Context, key string) (map[string]any, error) {
 	if !validKeyPattern.MatchString(key) {
 		return nil, fmt.Errorf("invalid redis key %q", key)
 	}
 
-	value, err := s.rdb.Get(ctx, key).Result()
+	value, err := c.rdb.Get(ctx, key).Result()
 	if err != nil {
 		return nil, fmt.Errorf("redis.Get: %w", err)
 	}

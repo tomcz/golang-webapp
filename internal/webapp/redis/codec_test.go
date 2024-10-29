@@ -10,7 +10,7 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func TestStore(t *testing.T) {
+func TestCodecRoundTrip(t *testing.T) {
 	mr, err := miniredis.Run()
 	assert.NilError(t, err)
 	defer mr.Close()
@@ -20,7 +20,7 @@ func TestStore(t *testing.T) {
 	})
 	defer rdb.Close()
 
-	store := &redisStore{rdb}
+	store := &redisCodec{rdb}
 	data := map[string]any{"wibble": "wobble"}
 
 	key, err := store.Encode(context.Background(), data, time.Hour)

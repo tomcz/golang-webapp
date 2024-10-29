@@ -13,7 +13,7 @@ func TestCodecRoundTrip(t *testing.T) {
 	now := time.Now()
 	clock := clocks.NewFakePassiveClock(now)
 
-	store := &cookieStore{
+	store := &cookieCodec{
 		key:   randomKey(),
 		clock: clock,
 	}
@@ -35,7 +35,7 @@ func TestCodecRoundTrip_Expired(t *testing.T) {
 	now := time.Now()
 	clock := clocks.NewFakePassiveClock(now)
 
-	store := &cookieStore{
+	store := &cookieCodec{
 		key:   randomKey(),
 		clock: clock,
 	}
