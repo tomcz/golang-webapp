@@ -1,68 +1,52 @@
 package cookie
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"slices"
+	"context"
 	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
+	clocks "k8s.io/utils/clock/testing"
 )
 
 func TestCodecRoundTrip(t *testing.T) {
-	key, err := randomKey()
-	assert.NilError(t, err)
+	now := time.Now()
+	clock := clocks.NewFakePassiveClock(now)
 
-	codec := &cookieStore{
-		name:   "test",
-		key:    key,
-		maxAge: 24 * time.Hour,
-		path:   "/",
+	store := &cookieStore{
+		key:   randomKey(),
+		clock: clock,
 	}
 
-	now := time.Now()
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := codec.encode(data, now.Add(codec.maxAge))
+	encoded, err := store.Encode(context.Background(), data, time.Hour)
 	assert.NilError(t, err)
 
-	decoded, err := codec.decode(encoded, now.Add(time.Hour))
+	clock.SetTime(now.Add(time.Minute))
+
+	decoded, err := store.Decode(context.Background(), encoded)
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, data, decoded)
 }
 
-func TestCodecCookie(t *testing.T) {
-	key, err := randomKey()
-	assert.NilError(t, err)
+func TestCodecRoundTrip_Expired(t *testing.T) {
+	now := time.Now()
+	clock := clocks.NewFakePassiveClock(now)
 
-	codec := &cookieStore{
-		name:   "test",
-		key:    key,
-		maxAge: 24 * time.Hour,
-		path:   "/",
+	store := &cookieStore{
+		key:   randomKey(),
+		clock: clock,
 	}
 
 	data := map[string]any{"wibble": "wobble"}
-	outReq := httptest.NewRequest(http.MethodGet, "https://example.com/foo", nil)
-	outRes := httptest.NewRecorder()
-	err = codec.SetSession(outRes, outReq, data)
+
+	encoded, err := store.Encode(context.Background(), data, time.Minute)
 	assert.NilError(t, err)
 
-	cookies := outRes.Result().Cookies()
-	idx := slices.IndexFunc(cookies, func(c *http.Cookie) bool { return c.Name == codec.name })
-	assert.Assert(t, idx >= 0)
-	cookie := cookies[idx]
-	assert.Equal(t, codec.path, cookie.Path)
-	assert.Equal(t, int(codec.maxAge.Seconds()), cookie.MaxAge)
-	assert.Equal(t, true, cookie.Secure)
-	assert.Equal(t, true, cookie.HttpOnly)
+	clock.SetTime(now.Add(time.Hour))
 
-	inReq := httptest.NewRequest(http.MethodGet, "/bar", nil)
-	inReq.Header.Set("Cookie", cookie.String())
-	actual, err := codec.GetSession(inReq)
-	assert.NilError(t, err)
-
-	assert.DeepEqual(t, data, actual)
+	_, err = store.Decode(context.Background(), encoded)
+	assert.ErrorContains(t, err, "session expired")
 }

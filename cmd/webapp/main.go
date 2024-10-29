@@ -16,22 +16,32 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp"
 	"github.com/tomcz/golang-webapp/internal/webapp/cookie"
 	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
+	"github.com/tomcz/golang-webapp/internal/webapp/redis"
 )
 
 const envDevelopment = "development"
 
 var (
-	env         = envFlag("env", "ENV", envDevelopment, "Runtime environment (development or production)")
-	logLevel    = envFlag("log-level", "LOG_LEVEL", "INFO", "Logging level (DEBUG, INFO, WARN)")
-	logType     = envFlag("log-type", "LOG_TYPE", "DEFAULT", "Logger type (DEFAULT, TEXT, JSON)")
-	knownUsers  = envFlag("known-users", "KNOWN_USERS", "", "Valid 'user:password,user2:password2,...' combinations")
+	env        = envFlag("env", "ENV", envDevelopment, "Runtime environment (development or production)")
+	knownUsers = envFlag("known-users", "KNOWN_USERS", "", "Valid 'user:password,user2:password2,...' combinations")
+
+	logLevel = envFlag("log-level", "LOG_LEVEL", "info", "Logging level (debug, info, warn)")
+	logType  = envFlag("log-type", "LOG_TYPE", "default", "Logger type (default, text, json)")
+
 	listenAddr  = envFlag("listen-addr", "LISTEN_ADDR", ":3000", "Service 'ip:port' listen address")
-	cookieEnc   = envFlag("cookie-key", "COOKIE_KEY", "", "If not provided a random one will be used")
-	cookieName  = envFlag("cookie-name", "COOKIE_NAME", "_app_session", "Name of HTTP application cookie")
 	tlsCertFile = envFlag("tls-cert", "TLS_CERT_FILE", "", "For HTTPS service, optional")
 	tlsKeyFile  = envFlag("tls-key", "TLS_KEY_FILE", "", "For HTTPS service, optional")
-	keygen      = flag.Bool("keygen", false, "Print out a new COOKIE_KEY and exit")
-	version     = flag.Bool("version", false, "Show build version and exit")
+
+	cookieName = envFlag("cookie-name", "COOKIE_NAME", "_app_session", "Name of HTTP application cookie")
+	cookieKey  = envFlag("cookie-key", "COOKIE_KEY", "", "If not provided a random one will be used")
+
+	redisAddr = envFlag("redis-addr", "REDIS_ADDR", "", "Redis host:port, optional")
+	redisUser = envFlag("redis-user", "REDIS_USER", "", "Redis username, optional")
+	redisPass = envFlag("redis-pass", "REDIS_PASS", "", "Redis password, optional")
+	redisTLS  = envFlag("redis-tls", "REDIS_TLS", "off", "Redis TLS (off, on, insecure)")
+
+	keygen  = flag.Bool("keygen", false, "Print out a new COOKIE_KEY and exit")
+	version = flag.Bool("version", false, "Show build version and exit")
 )
 
 func envFlag(flagName, envName, defaultValue, usage string) *string {
@@ -43,26 +53,11 @@ func envFlag(flagName, envName, defaultValue, usage string) *string {
 	return flag.String(flagName, value, flagUsage)
 }
 
-var log *slog.Logger
-
 func main() {
 	flag.Parse()
 
-	var err error
-	log, err = setupLogging()
-	if err != nil {
-		slog.Error("logging setup failed", "error", err)
-		os.Exit(1)
-	}
-
 	if *keygen {
-		var key string
-		key, err = cookie.RandomKey()
-		if err != nil {
-			log.Error("keygen failed", "error", err)
-			os.Exit(1)
-		}
-		fmt.Println(key)
+		fmt.Println(cookie.RandomKey())
 		os.Exit(0)
 	}
 
@@ -71,22 +66,28 @@ func main() {
 		os.Exit(0)
 	}
 
-	if err = realMain(); err != nil {
+	log, err := setupLogging()
+	if err != nil {
+		slog.Error("logging setup failed", "error", err)
+		os.Exit(1)
+	}
+	if err = realMain(log); err != nil {
 		log.Error("application failed", "error", err)
 		os.Exit(1)
 	}
 	log.Info("application stopped")
 }
 
-func realMain() error {
+func realMain(log *slog.Logger) error {
 	withTLS := *tlsCertFile != "" && *tlsKeyFile != ""
 
-	store, err := cookie.Store(*cookieName, *cookieEnc)
+	codec, err := createCodec()
 	if err != nil {
 		return err
 	}
+	defer codec.Close()
 
-	session := webapp.NewSessionWrapper(store, webapp.CsrfPerSession)
+	session := webapp.NewSessionWrapper(*cookieName, codec, webapp.CsrfPerSession)
 	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers()), withTLS)
 
 	server := &http.Server{
@@ -120,6 +121,13 @@ func realMain() error {
 		return nil
 	}
 	return err
+}
+
+func createCodec() (webapp.SessionCodec, error) {
+	if *redisAddr != "" {
+		return redis.New(*redisAddr, *redisUser, *redisPass, *redisTLS), nil
+	}
+	return cookie.New(*cookieKey)
 }
 
 func parseKnownUsers() map[string]string {

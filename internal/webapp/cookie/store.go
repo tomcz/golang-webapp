@@ -2,14 +2,15 @@ package cookie
 
 import (
 	"bytes"
-	"crypto/rand"
+	"context"
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/tink-crypto/tink-go/v2/aead/subtle"
+	"github.com/tink-crypto/tink-go/v2/subtle/random"
+	"k8s.io/utils/clock"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
 )
@@ -20,23 +21,17 @@ func init() {
 	gob.Register(time.Time{})
 }
 
-func RandomKey() (string, error) {
-	buf, err := randomKey()
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(buf), nil
+func RandomKey() string {
+	return base64.StdEncoding.EncodeToString(randomKey())
 }
 
-func randomKey() ([]byte, error) {
-	buf := make([]byte, 32)
-	_, err := rand.Read(buf)
-	return buf, err
+func randomKey() []byte {
+	return random.GetRandomBytes(32)
 }
 
 func keyToBytes(key string) ([]byte, error) {
 	if key == "" {
-		return randomKey()
+		return randomKey(), nil
 	}
 	buf, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
@@ -49,114 +44,86 @@ func keyToBytes(key string) ([]byte, error) {
 }
 
 type cookieStore struct {
-	name   string
-	key    []byte
-	maxAge time.Duration
-	path   string
+	key   []byte
+	clock clock.PassiveClock
 }
 
-func Store(sessionName, sessionKey string) (webapp.SessionStore, error) {
+func New(sessionKey string) (webapp.SessionCodec, error) {
 	keyBytes, err := keyToBytes(sessionKey)
 	if err != nil {
 		return nil, err
 	}
 	return &cookieStore{
-		name:   sessionName,
-		key:    keyBytes,
-		maxAge: 30 * 24 * time.Hour,
-		path:   "/",
+		key:   keyBytes,
+		clock: clock.RealClock{},
 	}, nil
 }
 
-func (c *cookieStore) SetSession(w http.ResponseWriter, r *http.Request, session map[string]any) error {
-	if len(session) == 0 {
-		cookie := &http.Cookie{
-			Name:     c.name,
-			Path:     c.path,
-			MaxAge:   -1,
-			Secure:   r.URL.Scheme == "https",
-			HttpOnly: true,
-		}
-		http.SetCookie(w, cookie)
-		return nil
-	}
-	expiresAt := time.Now().Add(c.maxAge)
-	value, err := c.encode(session, expiresAt)
-	if err != nil {
-		return err
-	}
-	cookie := &http.Cookie{
-		Name:     c.name,
-		Value:    value,
-		Path:     c.path,
-		Expires:  expiresAt,
-		MaxAge:   int(c.maxAge.Seconds()),
-		Secure:   r.URL.Scheme == "https",
-		HttpOnly: true,
-	}
-	http.SetCookie(w, cookie)
+func (c *cookieStore) Close() error {
 	return nil
 }
 
-func (c *cookieStore) GetSession(r *http.Request) (map[string]any, error) {
-	cookie, err := r.Cookie(c.name)
-	if err != nil {
-		return nil, err
-	}
-	return c.decode(cookie.Value, time.Now())
-}
-
-func (c *cookieStore) encode(session map[string]any, expiresAt time.Time) (string, error) {
-	session[sessionExpiresAt] = expiresAt
+func (c *cookieStore) Encode(_ context.Context, session map[string]any, maxAge time.Duration) (string, error) {
+	session[sessionExpiresAt] = c.clock.Now().Add(maxAge)
 	defer func() {
 		delete(session, sessionExpiresAt)
 	}()
+
 	buf := webapp.BufBorrow()
 	defer webapp.BufReturn(buf)
+
 	err := gob.NewEncoder(buf).Encode(session)
 	if err != nil {
 		return "", fmt.Errorf("gob.encode: %w", err)
 	}
+
 	cipher, err := subtle.NewAESGCMSIV(c.key)
 	if err != nil {
 		return "", fmt.Errorf("cipher.new: %w", err)
 	}
+
 	cipherText, err := cipher.Encrypt(buf.Bytes(), nil)
 	if err != nil {
 		return "", fmt.Errorf("cipher.encrypt: %w", err)
 	}
+
 	return base64.URLEncoding.EncodeToString(cipherText), nil
 }
 
-func (c *cookieStore) decode(cookieValue string, now time.Time) (map[string]any, error) {
-	cipherText, err := base64.URLEncoding.DecodeString(cookieValue)
+func (c *cookieStore) Decode(_ context.Context, value string) (map[string]any, error) {
+	cipherText, err := base64.URLEncoding.DecodeString(value)
 	if err != nil {
-		return nil, fmt.Errorf("cookieValue.decode: %w", err)
+		return nil, fmt.Errorf("value.decode: %w", err)
 	}
+
 	cipher, err := subtle.NewAESGCMSIV(c.key)
 	if err != nil {
 		return nil, fmt.Errorf("cipher.new: %w", err)
 	}
+
 	plainText, err := cipher.Decrypt(cipherText, nil)
 	if err != nil {
 		return nil, fmt.Errorf("cipher.decrypt: %w", err)
 	}
+
 	var session map[string]any
 	err = gob.NewDecoder(bytes.NewReader(plainText)).Decode(&session)
 	if err != nil {
 		return nil, fmt.Errorf("gob.decode: %w", err)
 	}
-	value, ok := session[sessionExpiresAt]
+
+	expiresTxt, ok := session[sessionExpiresAt]
 	if !ok {
 		return nil, fmt.Errorf("no session expiry")
 	}
-	expiresAt, ok := value.(time.Time)
+	expiresAt, ok := expiresTxt.(time.Time)
 	if !ok {
 		return nil, fmt.Errorf("session expiry is not a time")
 	}
-	if expiresAt.Before(now) {
+	if expiresAt.Before(c.clock.Now()) {
 		return nil, fmt.Errorf("session expired at %s", expiresAt)
 	}
+
 	delete(session, sessionExpiresAt)
 	return session, nil
 }

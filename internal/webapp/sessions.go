@@ -3,9 +3,11 @@ package webapp
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 
-	"github.com/google/uuid"
+	"github.com/tink-crypto/tink-go/v2/subtle/random"
 )
 
 const (
@@ -54,46 +56,86 @@ type Session interface {
 	Clear()
 }
 
-type SessionStore interface {
-	SetSession(w http.ResponseWriter, r *http.Request, session map[string]any) error
-	GetSession(r *http.Request) (map[string]any, error)
+type SessionCodec interface {
+	Encode(ctx context.Context, session map[string]any, maxAge time.Duration) (string, error)
+	Decode(ctx context.Context, value string) (map[string]any, error)
+	io.Closer
 }
 
 type sessionWrapper struct {
-	csrf  CsrfProtection
-	store SessionStore
+	csrf   CsrfProtection
+	codec  SessionCodec
+	name   string
+	path   string
+	maxAge time.Duration
 }
 
 type currentSession struct {
 	session map[string]any
-	csrf    CsrfProtection
-	store   SessionStore
+	wrapper *sessionWrapper
 }
 
-func NewSessionWrapper(codec SessionStore, csrf CsrfProtection) SessionWrapper {
+func NewSessionWrapper(sessionName string, codec SessionCodec, csrf CsrfProtection) SessionWrapper {
 	return &sessionWrapper{
-		csrf:  csrf,
-		store: codec,
+		csrf:   csrf,
+		codec:  codec,
+		name:   sessionName,
+		path:   "/",
+		maxAge: 30 * 24 * time.Hour,
 	}
 }
 
 func (s *sessionWrapper) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, err := s.store.GetSession(r)
+		data, err := s.loadSession(r)
 		if err != nil {
-			RLog(r).Debug("session codec failed", "error", err)
-			session = make(map[string]any)
+			RLog(r).Debug("load session failed", "error", err)
+			data = make(map[string]any)
 		}
-		ctx := context.WithValue(r.Context(), currentSessionKey, &currentSession{
-			session: session,
-			csrf:    s.csrf,
-			store:   s.store,
-		})
+		session := &currentSession{session: data, wrapper: s}
+		ctx := context.WithValue(r.Context(), currentSessionKey, session)
 		r = r.WithContext(ctx)
 		if s.csrfSafe(w, r) {
 			fn(w, r)
 		}
 	}
+}
+
+func (s *sessionWrapper) loadSession(r *http.Request) (map[string]any, error) {
+	cookie, err := r.Cookie(s.name)
+	if err != nil {
+		return nil, err
+	}
+	return s.codec.Decode(r.Context(), cookie.Value)
+}
+
+func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, data map[string]any) error {
+	if len(data) == 0 {
+		cookie := &http.Cookie{
+			Name:     s.name,
+			Path:     s.path,
+			MaxAge:   -1,
+			Secure:   r.URL.Scheme == "https",
+			HttpOnly: true,
+		}
+		http.SetCookie(w, cookie)
+		return nil
+	}
+	value, err := s.codec.Encode(r.Context(), data, s.maxAge)
+	if err != nil {
+		return err
+	}
+	cookie := &http.Cookie{
+		Name:     s.name,
+		Value:    value,
+		Path:     s.path,
+		Expires:  time.Now().Add(s.maxAge),
+		MaxAge:   int(s.maxAge.Seconds()),
+		Secure:   r.URL.Scheme == "https",
+		HttpOnly: true,
+	}
+	http.SetCookie(w, cookie)
+	return nil
 }
 
 // according to RFC-7231
@@ -167,15 +209,15 @@ func getSessionData(r *http.Request) map[string]any {
 	data[FlashSuccessKey] = s.popFlash(sessionFlashSuccess)
 	data[FlashWarningKey] = s.popFlash(sessionFlashWarning)
 	data[FlashErrorKey] = s.popFlash(sessionFlashError)
-	if s.csrf == CsrfDisabled {
+	if s.wrapper.csrf == CsrfDisabled {
 		return data
 	}
 	var csrfToken string
-	if s.csrf == CsrfPerSession {
+	if s.wrapper.csrf == CsrfPerSession {
 		csrfToken = s.GetString(sessionCsrfToken)
 	}
 	if csrfToken == "" {
-		csrfToken = uuid.NewString()
+		csrfToken = fmt.Sprintf("%x", random.GetRandomBytes(32))
 		s.Set(sessionCsrfToken, csrfToken)
 	}
 	data[CsrfTokenKey] = csrfToken
@@ -187,9 +229,9 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	if s == nil {
 		return true // no session to save
 	}
-	err := s.store.SetSession(w, r, s.session)
+	err := s.wrapper.saveSession(w, r, s.session)
 	if err != nil {
-		err = fmt.Errorf("session save: %w", err)
+		err = fmt.Errorf("save session: %w", err)
 		RenderError(w, r, err, "Failed to save session", http.StatusInternalServerError)
 		return false
 	}

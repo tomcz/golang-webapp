@@ -7,8 +7,8 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/streadway/handy/breaker"
+	"github.com/tink-crypto/tink-go/v2/subtle/random"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
 )
@@ -47,7 +47,7 @@ func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		reqID := uuid.NewString()
+		reqID := fmt.Sprintf("%x", random.GetRandomBytes(8))
 		log := slog.With("component", "web", "req_id", reqID)
 		fields := newMetadataFields(reqID, log)
 
