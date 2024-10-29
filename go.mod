@@ -3,9 +3,9 @@ module github.com/tomcz/golang-webapp
 go 1.23
 
 require (
-	github.com/google/tink/go v1.7.0
 	github.com/google/uuid v1.6.0
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
+	github.com/tink-crypto/tink-go/v2 v2.2.0
 	github.com/unrolled/secure v1.17.0
 	github.com/urfave/negroni v1.0.0
 	gotest.tools/v3 v3.5.1

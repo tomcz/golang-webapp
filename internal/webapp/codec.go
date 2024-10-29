@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/tink/go/aead/subtle"
+	"github.com/tink-crypto/tink-go/v2/aead/subtle"
 )
 
 const sessionExpiresAt = "_Expires_At_"
