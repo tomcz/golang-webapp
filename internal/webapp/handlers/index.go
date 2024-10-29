@@ -24,7 +24,7 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 		name = "World"
 	}
 	var opts []webapp.RenderOpt
-	if r.Header.Get("Hx-Request") == "true" {
+	if isPartial(r) {
 		opts = append(opts,
 			webapp.RenderWithTemplateName("body"),
 			webapp.RenderWithLayoutFile(""),

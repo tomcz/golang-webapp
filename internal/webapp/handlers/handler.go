@@ -27,6 +27,10 @@ func NewHandler(s webapp.SessionStore, knownUsers map[string]string) http.Handle
 	return webapp.DynamicCacheControl(mux)
 }
 
+func isPartial(r *http.Request) bool {
+	return r.Header.Get("Hx-Request") == "true"
+}
+
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
 	webapp.RedirectToUrl(w, r, "/login")
 }
