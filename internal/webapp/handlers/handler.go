@@ -11,6 +11,7 @@ func NewHandler(sw webapp.SessionWrapper, knownUsers map[string]string) http.Han
 
 	// no session
 	mux.Handle("/", http.RedirectHandler("/index", http.StatusFound))
+	mux.Handle("/favicon.ico", http.NotFoundHandler())
 	mux.HandleFunc("/error", exampleError)
 	mux.HandleFunc("/panic", examplePanic)
 

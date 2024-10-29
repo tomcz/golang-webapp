@@ -13,9 +13,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	session.AddFlashWarning("example flash warning message")
 	session.AddFlashMessage("example flash generic message")
 	session.AddFlashSuccess("example flash success message")
-	username := session.GetString(authUserKey)
-	data := map[string]any{authUserKey: username}
-	webapp.Render(w, r, "index.gohtml", data)
+	webapp.Render(w, r, "index.gohtml", authData(r))
 }
 
 func updateIndex(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +28,7 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 			webapp.RenderWithLayoutFile(""),
 		)
 	}
-	data := map[string]any{"Name": name}
+	data := authData(r)
+	data["Name"] = name
 	webapp.Render(w, r, "hello.gohtml", data, opts...)
 }

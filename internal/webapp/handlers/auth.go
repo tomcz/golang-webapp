@@ -48,6 +48,12 @@ func private(sw webapp.SessionWrapper, next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
+func authData(r *http.Request) map[string]any {
+	session := webapp.CurrentSession(r)
+	username := session.GetString(authUserKey)
+	return map[string]any{authUserKey: username}
+}
+
 func showLogin(w http.ResponseWriter, r *http.Request) {
 	s := webapp.CurrentSession(r)
 	if user := s.GetString(authUserKey); user != "" {

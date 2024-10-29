@@ -19,10 +19,7 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp/redis"
 )
 
-const envDevelopment = "development"
-
 var (
-	env        = envFlag("env", "ENV", envDevelopment, "Runtime environment (development or production)")
 	knownUsers = envFlag("known-users", "KNOWN_USERS", "", "Valid 'user:password,user2:password2,...' combinations")
 
 	logLevel = envFlag("log-level", "LOG_LEVEL", "info", "Logging level (debug, info, warn)")
@@ -81,7 +78,7 @@ func main() {
 func realMain(log *slog.Logger) error {
 	withTLS := *tlsCertFile != "" && *tlsKeyFile != ""
 
-	codec, err := createCodec()
+	codec, err := createCodec(log)
 	if err != nil {
 		return err
 	}
@@ -123,10 +120,12 @@ func realMain(log *slog.Logger) error {
 	return err
 }
 
-func createCodec() (webapp.SessionCodec, error) {
+func createCodec(log *slog.Logger) (webapp.SessionCodec, error) {
 	if *redisAddr != "" {
+		log.Info("storing sessions in redis")
 		return redis.New(*redisAddr, *redisUser, *redisPass, *redisTLS), nil
 	}
+	log.Info("storing sessions in cookies")
 	return cookie.New(*cookieKey)
 }
 
@@ -152,7 +151,7 @@ func setupLogging() (*slog.Logger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bad LOG_LEVEL: %w", err)
 	}
-	logDefaults := []any{"env", *env, "build", build.Version()}
+	logDefaults := []any{"build", build.Version()}
 	switch strings.ToUpper(*logType) {
 	case "TEXT":
 		opts := &slog.HandlerOptions{Level: level}
