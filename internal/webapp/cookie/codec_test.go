@@ -20,7 +20,7 @@ func TestCodecRoundTrip(t *testing.T) {
 
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := store.Encode(context.Background(), data, time.Hour)
+	encoded, err := store.Encode(context.Background(), "", data, time.Hour)
 	assert.NilError(t, err)
 
 	clock.SetTime(now.Add(time.Minute))
@@ -42,7 +42,7 @@ func TestCodecRoundTrip_Expired(t *testing.T) {
 
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := store.Encode(context.Background(), data, time.Minute)
+	encoded, err := store.Encode(context.Background(), "", data, time.Minute)
 	assert.NilError(t, err)
 
 	clock.SetTime(now.Add(time.Hour))

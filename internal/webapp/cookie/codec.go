@@ -59,11 +59,7 @@ func New(sessionKey string) (webapp.SessionCodec, error) {
 	}, nil
 }
 
-func (c *cookieCodec) Close() error {
-	return nil
-}
-
-func (c *cookieCodec) Encode(_ context.Context, session map[string]any, maxAge time.Duration) (string, error) {
+func (c *cookieCodec) Encode(_ context.Context, _ string, session map[string]any, maxAge time.Duration) (string, error) {
 	session[sessionExpiresAt] = c.clock.Now().Add(maxAge)
 	defer func() {
 		delete(session, sessionExpiresAt)
@@ -91,6 +87,10 @@ func (c *cookieCodec) Encode(_ context.Context, session map[string]any, maxAge t
 }
 
 func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, error) {
+	if value == "" {
+		return nil, fmt.Errorf("nothing to decode")
+	}
+
 	cipherText, err := base64.URLEncoding.DecodeString(value)
 	if err != nil {
 		return nil, fmt.Errorf("value.decode: %w", err)
@@ -126,4 +126,12 @@ func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, e
 
 	delete(session, sessionExpiresAt)
 	return session, nil
+}
+
+func (c *cookieCodec) Clear(context.Context, string) {
+	// No backend to purge cookie data from
+}
+
+func (c *cookieCodec) Close() error {
+	return nil // No backend to disconnect
 }

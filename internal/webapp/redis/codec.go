@@ -16,8 +16,6 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp"
 )
 
-const redisKeyName = "_Redis_Key_"
-
 type redisCodec struct {
 	rdb *redis.Client
 }
@@ -43,26 +41,19 @@ func redisTLS(tlsType string) *tls.Config {
 	}
 }
 
-func (c *redisCodec) Close() error {
-	return c.rdb.Close()
-}
-
-func (c *redisCodec) Encode(ctx context.Context, session map[string]any, maxAge time.Duration) (string, error) {
+func (c *redisCodec) Encode(ctx context.Context, key string, session map[string]any, maxAge time.Duration) (string, error) {
 	buf := webapp.BufBorrow()
 	defer webapp.BufReturn(buf)
-
-	var key string
-	if txt, ok := session[redisKeyName].(string); ok {
-		key = txt
-	} else {
-		key = fmt.Sprintf("%x", random.GetRandomBytes(32))
-	}
 
 	if err := gob.NewEncoder(buf).Encode(session); err != nil {
 		return "", fmt.Errorf("gob.Encode: %w", err)
 	}
-
 	value := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+	if !validKeyPattern.MatchString(key) {
+		key = fmt.Sprintf("%x", random.GetRandomBytes(32))
+	}
+
 	if err := c.rdb.Set(ctx, key, value, maxAge).Err(); err != nil {
 		return "", fmt.Errorf("redis.Set: %w", err)
 	}
@@ -91,7 +82,15 @@ func (c *redisCodec) Decode(ctx context.Context, key string) (map[string]any, er
 	if err != nil {
 		return nil, fmt.Errorf("gob.Decode: %w", err)
 	}
-
-	session[redisKeyName] = key
 	return session, nil
+}
+
+func (c *redisCodec) Clear(ctx context.Context, key string) {
+	if validKeyPattern.MatchString(key) {
+		c.rdb.Del(ctx, key)
+	}
+}
+
+func (c *redisCodec) Close() error {
+	return c.rdb.Close()
 }

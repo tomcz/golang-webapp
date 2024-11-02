@@ -57,8 +57,9 @@ type Session interface {
 }
 
 type SessionCodec interface {
-	Encode(ctx context.Context, session map[string]any, maxAge time.Duration) (string, error)
+	Encode(ctx context.Context, value string, session map[string]any, maxAge time.Duration) (string, error)
 	Decode(ctx context.Context, value string) (map[string]any, error)
+	Clear(ctx context.Context, value string)
 	io.Closer
 }
 
@@ -101,16 +102,22 @@ func (s *sessionWrapper) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (s *sessionWrapper) loadSession(r *http.Request) (map[string]any, error) {
+func (s *sessionWrapper) cookieValue(r *http.Request) string {
 	cookie, err := r.Cookie(s.name)
 	if err != nil {
-		return nil, err
+		return "" // no cookie
 	}
-	return s.codec.Decode(r.Context(), cookie.Value)
+	return cookie.Value
+}
+
+func (s *sessionWrapper) loadSession(r *http.Request) (map[string]any, error) {
+	return s.codec.Decode(r.Context(), s.cookieValue(r))
 }
 
 func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, data map[string]any) error {
+	oldValue := s.cookieValue(r)
 	if len(data) == 0 {
+		s.codec.Clear(r.Context(), oldValue)
 		cookie := &http.Cookie{
 			Name:     s.name,
 			Path:     s.path,
@@ -121,13 +128,13 @@ func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, dat
 		http.SetCookie(w, cookie)
 		return nil
 	}
-	value, err := s.codec.Encode(r.Context(), data, s.maxAge)
+	newValue, err := s.codec.Encode(r.Context(), oldValue, data, s.maxAge)
 	if err != nil {
 		return err
 	}
 	cookie := &http.Cookie{
 		Name:     s.name,
-		Value:    value,
+		Value:    newValue,
 		Path:     s.path,
 		Expires:  time.Now().Add(s.maxAge),
 		MaxAge:   int(s.maxAge.Seconds()),
