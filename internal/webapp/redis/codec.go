@@ -16,6 +16,8 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp"
 )
 
+var validKeyPattern = regexp.MustCompile(`^[[:xdigit:]]{64}$`)
+
 type redisCodec struct {
 	rdb *redis.Client
 }
@@ -59,8 +61,6 @@ func (c *redisCodec) Encode(ctx context.Context, key string, session map[string]
 	}
 	return key, nil
 }
-
-var validKeyPattern = regexp.MustCompile(`^[[:xdigit:]]{64}$`)
 
 func (c *redisCodec) Decode(ctx context.Context, key string) (map[string]any, error) {
 	if !validKeyPattern.MatchString(key) {
