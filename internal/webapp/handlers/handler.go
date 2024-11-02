@@ -13,6 +13,7 @@ func NewHandler(sw webapp.SessionWrapper, knownUsers map[string]string) http.Han
 	mux.Handle("/{$}", http.RedirectHandler("/index", http.StatusFound))
 	mux.HandleFunc("/error", exampleError)
 	mux.HandleFunc("/panic", examplePanic)
+	mux.HandleFunc("/ping", examplePing)
 
 	// unauthenticated, with session
 	mux.HandleFunc("GET /login", public(sw, showLogin))
