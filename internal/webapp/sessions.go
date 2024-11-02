@@ -82,7 +82,7 @@ func NewSessionWrapper(sessionName string, codec SessionCodec, csrf CsrfProtecti
 		codec:  codec,
 		name:   sessionName,
 		path:   "/",
-		maxAge: 30 * 24 * time.Hour,
+		maxAge: time.Hour,
 	}
 }
 
