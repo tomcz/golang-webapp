@@ -2,6 +2,7 @@ package memcache
 
 import (
 	"errors"
+	"io"
 	"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
@@ -12,8 +13,16 @@ import (
 
 const thirtyDaysInSeconds = 60 * 60 * 24 * 30
 
+// for replacement in tests
+type memcachedPort interface {
+	Set(item *memcache.Item) error
+	Get(key string) (*memcache.Item, error)
+	Delete(key string) error
+	io.Closer
+}
+
 type memcacheStore struct {
-	mdb *memcache.Client
+	mdb memcachedPort
 }
 
 func New(addr string) webapp.SessionStore {
