@@ -14,7 +14,7 @@ document.addEventListener("htmx:afterRequest", function (evt) {
 
 document.addEventListener("htmx:responseError", function (evt) {
   const div = document.createElement("div");
-  div.innerText = evt.detail.xhr.responseText.trim()
+  div.innerText = evt.detail.xhr.responseText.trim();
   div.classList.add("toast", "toast-error");
   evt.detail.target.replaceChildren(div);
 });

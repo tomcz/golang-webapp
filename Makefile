@@ -14,6 +14,9 @@ target:
 .PHONY: format
 format:
 	goimports -w -local github.com/tomcz/golang-webapp .
+ifneq ($(shell which npx),)
+	npx prettier --print-width 120 --write "static/*.(js|css)"
+endif
 
 .PHONY: lint
 lint:

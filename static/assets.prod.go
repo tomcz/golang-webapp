@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-//go:embed js/*
-//go:embed css/*
+//go:embed *.js
+//go:embed lib/*
 var content embed.FS
 
 // FS provides a filesystem of static assets
