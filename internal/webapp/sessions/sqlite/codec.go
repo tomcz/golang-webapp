@@ -1,11 +1,10 @@
 package sqlite
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/base64"
-	"encoding/gob"
+	"errors"
 	"fmt"
 	log "log/slog"
 	"time"
@@ -68,48 +67,40 @@ func (s *sqliteCodec) Close() error {
 }
 
 func (s *sqliteCodec) Encode(ctx context.Context, key string, session map[string]any, maxAge time.Duration) (string, error) {
-	buf := webapp.BufBorrow()
-	defer webapp.BufReturn(buf)
-
-	if err := gob.NewEncoder(buf).Encode(session); err != nil {
-		return "", fmt.Errorf("gob.Encode: %w", err)
+	data, err := sessions.Encode(session)
+	if err != nil {
+		return "", err
 	}
-	value := base64.StdEncoding.EncodeToString(buf.Bytes())
+	value := base64.StdEncoding.EncodeToString(data)
 
 	if !sessions.ValidKey(key) {
 		key = sessions.RandomKey()
 	}
 
 	now := s.clock.Now()
-	_, err := s.db.ExecContext(ctx, setSessionSQL, key, value, now, now.Add(maxAge))
+	_, err = s.db.ExecContext(ctx, setSessionSQL, key, value, now, now.Add(maxAge))
 	if err != nil {
-		return "", fmt.Errorf("db.Set: %w", err)
+		return "", err
 	}
 	return key, nil
 }
 
 func (s *sqliteCodec) Decode(ctx context.Context, key string) (map[string]any, error) {
 	if !sessions.ValidKey(key) {
-		return nil, fmt.Errorf("invalid db key: %q", key)
+		return nil, errors.New("invalid session key")
 	}
 
 	var value string
 	err := s.db.QueryRowContext(ctx, getSessionSQL, key, s.clock.Now()).Scan(&value)
 	if err != nil {
-		return nil, fmt.Errorf("db.Get: %w", err)
+		return nil, err
 	}
 
 	buf, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
-		return nil, fmt.Errorf("base64.Decode: %w", err)
+		return nil, err
 	}
-
-	var session map[string]any
-	err = gob.NewDecoder(bytes.NewReader(buf)).Decode(&session)
-	if err != nil {
-		return nil, fmt.Errorf("gob.Decode: %w", err)
-	}
-	return session, nil
+	return sessions.Decode(buf)
 }
 
 func (s *sqliteCodec) Clear(ctx context.Context, key string) {

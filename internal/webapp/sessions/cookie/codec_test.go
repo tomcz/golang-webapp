@@ -57,5 +57,5 @@ func TestCodecRoundTrip_Expired(t *testing.T) {
 	clock.SetTime(now.Add(time.Hour))
 
 	_, err = codec.Decode(context.Background(), encoded)
-	assert.ErrorContains(t, err, "session expired")
+	assert.ErrorContains(t, err, "session has expired")
 }

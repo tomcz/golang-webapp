@@ -1,11 +1,9 @@
 package cookie
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/gob"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/tink-crypto/tink-go/v2/aead/subtle"
@@ -23,11 +21,11 @@ func keyToBytes(key string) ([]byte, error) {
 		return sessions.RandomBytes(), nil
 	}
 	if !sessions.ValidKey(key) {
-		return nil, fmt.Errorf("invalid key format")
+		return nil, errors.New("invalid key format")
 	}
 	buf, err := sessions.KeyBytes(key)
 	if err != nil {
-		return nil, fmt.Errorf("bad key: %w", err)
+		return nil, err
 	}
 	return buf, nil
 }
@@ -58,17 +56,14 @@ func (c *cookieCodec) Encode(_ context.Context, _ string, session map[string]any
 		delete(session, sessionExpiresAt)
 	}()
 
-	buf := webapp.BufBorrow()
-	defer webapp.BufReturn(buf)
-
-	err := gob.NewEncoder(buf).Encode(session)
+	plainText, err := sessions.Encode(session)
 	if err != nil {
-		return "", fmt.Errorf("gob.encode: %w", err)
+		return "", err
 	}
 
-	cipherText, err := c.cipher.Encrypt(buf.Bytes(), nil)
+	cipherText, err := c.cipher.Encrypt(plainText, nil)
 	if err != nil {
-		return "", fmt.Errorf("cipher.encrypt: %w", err)
+		return "", err
 	}
 
 	return base64.URLEncoding.EncodeToString(cipherText), nil
@@ -76,35 +71,34 @@ func (c *cookieCodec) Encode(_ context.Context, _ string, session map[string]any
 
 func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, error) {
 	if value == "" {
-		return nil, fmt.Errorf("nothing to decode")
+		return nil, errors.New("nothing to decode")
 	}
 
 	cipherText, err := base64.URLEncoding.DecodeString(value)
 	if err != nil {
-		return nil, fmt.Errorf("value.decode: %w", err)
+		return nil, err
 	}
 
 	plainText, err := c.cipher.Decrypt(cipherText, nil)
 	if err != nil {
-		return nil, fmt.Errorf("cipher.decrypt: %w", err)
+		return nil, err
 	}
 
-	var session map[string]any
-	err = gob.NewDecoder(bytes.NewReader(plainText)).Decode(&session)
+	session, err := sessions.Decode(plainText)
 	if err != nil {
-		return nil, fmt.Errorf("gob.decode: %w", err)
+		return nil, err
 	}
 
 	expiresTxt, ok := session[sessionExpiresAt]
 	if !ok {
-		return nil, fmt.Errorf("no session expiry")
+		return nil, errors.New("no session expiry")
 	}
 	expiresAt, ok := expiresTxt.(time.Time)
 	if !ok {
-		return nil, fmt.Errorf("session expiry is not a time")
+		return nil, errors.New("session expiry is not a time")
 	}
 	if expiresAt.Before(c.clock.Now()) {
-		return nil, fmt.Errorf("session expired at %s", expiresAt)
+		return nil, errors.New("session has expired")
 	}
 
 	delete(session, sessionExpiresAt)

@@ -1,12 +1,10 @@
 package redis
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/gob"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -41,45 +39,38 @@ func redisTLS(tlsType string) *tls.Config {
 }
 
 func (c *redisCodec) Encode(ctx context.Context, key string, session map[string]any, maxAge time.Duration) (string, error) {
-	buf := webapp.BufBorrow()
-	defer webapp.BufReturn(buf)
-
-	if err := gob.NewEncoder(buf).Encode(session); err != nil {
-		return "", fmt.Errorf("gob.Encode: %w", err)
+	buf, err := sessions.Encode(session)
+	if err != nil {
+		return "", err
 	}
-	value := base64.StdEncoding.EncodeToString(buf.Bytes())
+	value := base64.StdEncoding.EncodeToString(buf)
 
 	if !sessions.ValidKey(key) {
 		key = sessions.RandomKey()
 	}
 
-	if err := c.rdb.Set(ctx, key, value, maxAge).Err(); err != nil {
-		return "", fmt.Errorf("redis.Set: %w", err)
+	err = c.rdb.Set(ctx, key, value, maxAge).Err()
+	if err != nil {
+		return "", err
 	}
 	return key, nil
 }
 
 func (c *redisCodec) Decode(ctx context.Context, key string) (map[string]any, error) {
 	if !sessions.ValidKey(key) {
-		return nil, fmt.Errorf("invalid redis key: %q", key)
+		return nil, errors.New("invalid session key")
 	}
 
 	value, err := c.rdb.Get(ctx, key).Result()
 	if err != nil {
-		return nil, fmt.Errorf("redis.Get: %w", err)
+		return nil, err
 	}
 
 	buf, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
-		return nil, fmt.Errorf("base64.Decode: %w", err)
+		return nil, err
 	}
-
-	var session map[string]any
-	err = gob.NewDecoder(bytes.NewReader(buf)).Decode(&session)
-	if err != nil {
-		return nil, fmt.Errorf("gob.Decode: %w", err)
-	}
-	return session, nil
+	return sessions.Decode(buf)
 }
 
 func (c *redisCodec) Clear(ctx context.Context, key string) {
