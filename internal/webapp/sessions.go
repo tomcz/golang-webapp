@@ -2,8 +2,8 @@ package webapp
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -225,7 +225,7 @@ func getSessionData(r *http.Request) map[string]any {
 		csrfToken = s.GetString(sessionCsrfToken)
 	}
 	if csrfToken == "" {
-		csrfToken = fmt.Sprintf("%x", random.GetRandomBytes(32))
+		csrfToken = hex.EncodeToString(random.GetRandomBytes(32))
 		s.Set(sessionCsrfToken, csrfToken)
 	}
 	data[CsrfTokenKey] = csrfToken

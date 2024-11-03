@@ -1,6 +1,7 @@
 package webapp
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -47,7 +48,7 @@ func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		reqID := fmt.Sprintf("%x", random.GetRandomBytes(8))
+		reqID := hex.EncodeToString(random.GetRandomBytes(8))
 		log := slog.With("component", "web", "req_id", reqID)
 		fields := newMetadataFields(reqID, log)
 
