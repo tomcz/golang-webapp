@@ -11,7 +11,7 @@ import (
 )
 
 func testDB() (*sql.DB, error) {
-	dsn := "file:webapp.db?mode=memory"
+	dsn := "file:test.db?mode=memory"
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
