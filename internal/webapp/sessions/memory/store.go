@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"bytes"
 	"errors"
 	"time"
 
@@ -28,7 +29,7 @@ func (s *memoryStore) Write(key string, session map[string]any, maxAge time.Dura
 	if err = sessions.ValidKey(key); err != nil {
 		key = sessions.RandomKey()
 	}
-	s.cache.Set(key, encoded, maxAge)
+	s.cache.Set(key, bytes.Clone(encoded), maxAge)
 	return key, nil
 }
 
@@ -40,7 +41,8 @@ func (s *memoryStore) Read(key string) (map[string]any, error) {
 	if !ok {
 		return nil, errors.New("key not found")
 	}
-	return sessions.Decode(value.([]byte))
+	encoded := bytes.Clone(value.([]byte))
+	return sessions.Decode(encoded)
 }
 
 func (s *memoryStore) Delete(key string) {
