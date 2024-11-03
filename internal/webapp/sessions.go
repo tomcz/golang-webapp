@@ -2,6 +2,7 @@ package webapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,7 +42,7 @@ const (
 )
 
 type SessionWrapper interface {
-	Wrap(fn http.HandlerFunc) http.HandlerFunc
+	Wrap(next http.HandlerFunc) http.HandlerFunc
 }
 
 type Session interface {
@@ -86,7 +87,7 @@ func NewSessionWrapper(sessionName string, codec SessionCodec, csrf CsrfProtecti
 	}
 }
 
-func (s *sessionWrapper) Wrap(fn http.HandlerFunc) http.HandlerFunc {
+func (s *sessionWrapper) Wrap(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := s.loadSession(r)
 		if err != nil {
@@ -94,10 +95,9 @@ func (s *sessionWrapper) Wrap(fn http.HandlerFunc) http.HandlerFunc {
 			data = make(map[string]any)
 		}
 		session := &currentSession{session: data, wrapper: s}
-		ctx := context.WithValue(r.Context(), currentSessionKey, session)
-		r = r.WithContext(ctx)
-		if s.csrfSafe(w, r) {
-			fn(w, r)
+		r = r.WithContext(context.WithValue(r.Context(), currentSessionKey, session))
+		if s.csrfSafe(w, r, session) {
+			next(w, r)
 		}
 	}
 }
@@ -153,17 +153,16 @@ var csrfSafeMethods = map[string]bool{
 	http.MethodTrace:   true,
 }
 
-func (s *sessionWrapper) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
+func (s *sessionWrapper) csrfSafe(w http.ResponseWriter, r *http.Request, cs *currentSession) bool {
 	if csrfSafeMethods[r.Method] {
 		return true
 	}
 	if s.csrf == CsrfDisabled {
 		return true
 	}
-	cs := CurrentSession(r)
 	sessionToken := cs.GetString(sessionCsrfToken)
 	if sessionToken == "" {
-		err := fmt.Errorf("no csrf token in session")
+		err := errors.New("no csrf token in session")
 		RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
 		return false
 	}
@@ -176,14 +175,16 @@ func (s *sessionWrapper) csrfSafe(w http.ResponseWriter, r *http.Request) bool {
 	}
 	var err error
 	if requestToken == "" {
-		err = fmt.Errorf("no csrf token in request")
+		err = errors.New("no csrf token in request")
 	}
 	if requestToken != sessionToken {
-		err = fmt.Errorf("csrf token mismatch")
+		err = errors.New("csrf token mismatch")
 	}
 	if err != nil {
-		if s.csrf == CsrfPerRequest && !saveSession(w, r) {
-			return false
+		if s.csrf == CsrfPerRequest {
+			if fail := s.saveSession(w, r, cs.session); fail != nil {
+				err = errors.Join(err, fail)
+			}
 		}
 		RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
 		return false
@@ -238,7 +239,6 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	}
 	err := s.wrapper.saveSession(w, r, s.session)
 	if err != nil {
-		err = fmt.Errorf("save session: %w", err)
 		RenderError(w, r, err, "Failed to save session", http.StatusInternalServerError)
 		return false
 	}

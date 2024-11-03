@@ -75,41 +75,50 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	for key, value := range getSessionData(r) {
 		data[key] = value
 	}
-	if !saveSession(w, r) {
-		return
-	}
-
-	// add commit info so that we can use versioned static paths
-	// to prevent browsers using old assets with new deployments
+	// Old-school cache-busting technique: add commit info so that we can use versioned
+	// static paths to prevent browsers from using old assets with new deployments.
 	data["Commit"] = build.Commit()
+
+	if !saveSession(w, r) {
+		return // error response rendered
+	}
 
 	tmpl, err := newTemplate(cfg.layoutFile, templateFile)
 	if err != nil {
-		err = fmt.Errorf("template new: %w", err)
+		err = fmt.Errorf("template.new: %w", err)
 		RenderError(w, r, err, "Failed to create template", http.StatusInternalServerError)
 		return
 	}
 
+	// We buffer template execution output by default to avoid writing incomplete or malformed
+	// content to the response, but sometimes we need to render a huge data set without buffering.
 	if cfg.unbuffered {
-		w.Header().Set("Content-Type", cfg.contentType)
-		w.WriteHeader(cfg.statusCode)
-		err = tmpl.ExecuteTemplate(w, cfg.templateName, data)
-		if err != nil {
-			RLog(r).Error("unbuffered write failed", "error", err)
-		}
+		writeUnbuffered(w, r, tmpl, data, cfg)
 		return
 	}
+	writeBuffered(w, r, tmpl, data, cfg)
+}
 
-	// buffer template execution output to avoid writing
-	// incomplete or malformed content to the response
+func writeUnbuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Template, data map[string]any, cfg *renderCfg) {
+	w.Header().Set("Content-Type", cfg.contentType)
+	w.WriteHeader(cfg.statusCode)
+	err := tmpl.ExecuteTemplate(w, cfg.templateName, data)
+	if err != nil {
+		RLog(r).Error("unbuffered write failed", "error", err)
+	}
+}
+
+func writeBuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Template, data map[string]any, cfg *renderCfg) {
 	buf := BufBorrow()
 	defer BufReturn(buf)
-	err = tmpl.ExecuteTemplate(buf, cfg.templateName, data)
+
+	err := tmpl.ExecuteTemplate(buf, cfg.templateName, data)
 	if err != nil {
-		err = fmt.Errorf("template exec: %w", err)
+		err = fmt.Errorf("template.exec: %w", err)
 		RenderError(w, r, err, "Failed to execute template", http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", cfg.contentType)
 	w.WriteHeader(cfg.statusCode)
 	_, err = buf.WriteTo(w)
@@ -123,8 +132,8 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 var tmplCache sync.Map
 
 func newTemplate(templatePaths ...string) (*template.Template, error) {
-	// no need to recreate templates in prod builds
-	// since they're not going to change between renders
+	// There is no need to recreate templates in prod builds
+	// since they're not going to change between renders.
 	var cacheKey string
 	if build.IsProd {
 		cacheKey = strings.Join(templatePaths, ",")

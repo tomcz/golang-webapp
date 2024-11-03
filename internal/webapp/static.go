@@ -9,8 +9,8 @@ import (
 )
 
 func RegisterStaticAssetRoutes(mux *http.ServeMux) {
-	// add commit info so we can set versioned static paths
-	// to prevent browsers using old assets with a new version
+	// Old-school cache-busting technique: add commit info so that we can use versioned
+	// static paths to prevent browsers from using old assets with new deployments.
 	prefix := fmt.Sprintf("/static/%s/", build.Commit())
 	h := http.StripPrefix(prefix, http.FileServer(static.FS))
 	mux.Handle("/static/", staticCacheControl(h))
