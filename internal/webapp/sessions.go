@@ -58,9 +58,9 @@ type Session interface {
 }
 
 type SessionStore interface {
-	Write(ctx context.Context, value string, session map[string]any, maxAge time.Duration) (string, error)
-	Read(ctx context.Context, value string) (map[string]any, error)
-	Delete(ctx context.Context, value string)
+	Write(value string, session map[string]any, maxAge time.Duration) (string, error)
+	Read(value string) (map[string]any, error)
+	Delete(value string)
 	io.Closer
 }
 
@@ -111,13 +111,13 @@ func (s *sessionWrapper) cookieValue(r *http.Request) string {
 }
 
 func (s *sessionWrapper) loadSession(r *http.Request) (map[string]any, error) {
-	return s.store.Read(r.Context(), s.cookieValue(r))
+	return s.store.Read(s.cookieValue(r))
 }
 
 func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, data map[string]any) error {
 	oldValue := s.cookieValue(r)
 	if len(data) == 0 {
-		s.store.Delete(r.Context(), oldValue)
+		s.store.Delete(oldValue)
 		cookie := &http.Cookie{
 			Name:     s.name,
 			Path:     s.path,
@@ -128,7 +128,7 @@ func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, dat
 		http.SetCookie(w, cookie)
 		return nil
 	}
-	newValue, err := s.store.Write(r.Context(), oldValue, data, s.maxAge)
+	newValue, err := s.store.Write(oldValue, data, s.maxAge)
 	if err != nil {
 		return err
 	}

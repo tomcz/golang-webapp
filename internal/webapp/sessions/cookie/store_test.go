@@ -1,7 +1,6 @@
 package cookie
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -26,12 +25,12 @@ func TestRoundTrip(t *testing.T) {
 
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := store.Write(context.Background(), "", data, time.Hour)
+	encoded, err := store.Write("", data, time.Hour)
 	assert.NilError(t, err)
 
 	clock.SetTime(now.Add(time.Minute))
 
-	decoded, err := store.Read(context.Background(), encoded)
+	decoded, err := store.Read(encoded)
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, data, decoded)
@@ -51,11 +50,11 @@ func TestRoundTrip_Expired(t *testing.T) {
 
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := store.Write(context.Background(), "", data, time.Minute)
+	encoded, err := store.Write("", data, time.Minute)
 	assert.NilError(t, err)
 
 	clock.SetTime(now.Add(time.Hour))
 
-	_, err = store.Read(context.Background(), encoded)
+	_, err = store.Read(encoded)
 	assert.ErrorContains(t, err, "session has expired")
 }

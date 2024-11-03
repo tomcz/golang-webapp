@@ -1,7 +1,6 @@
 package cookie
 
 import (
-	"context"
 	"encoding/base64"
 	"errors"
 	"time"
@@ -50,7 +49,7 @@ func New(sessionKey string) (webapp.SessionStore, error) {
 	}, nil
 }
 
-func (s *cookieStore) Write(_ context.Context, _ string, session map[string]any, maxAge time.Duration) (string, error) {
+func (s *cookieStore) Write(_ string, session map[string]any, maxAge time.Duration) (string, error) {
 	session[sessionExpiresAt] = s.clock.Now().Add(maxAge)
 	defer func() {
 		delete(session, sessionExpiresAt)
@@ -69,7 +68,7 @@ func (s *cookieStore) Write(_ context.Context, _ string, session map[string]any,
 	return base64.URLEncoding.EncodeToString(cipherText), nil
 }
 
-func (s *cookieStore) Read(_ context.Context, value string) (map[string]any, error) {
+func (s *cookieStore) Read(value string) (map[string]any, error) {
 	if value == "" {
 		return nil, errors.New("nothing to decode")
 	}
@@ -105,7 +104,7 @@ func (s *cookieStore) Read(_ context.Context, value string) (map[string]any, err
 	return session, nil
 }
 
-func (s *cookieStore) Delete(context.Context, string) {
+func (s *cookieStore) Delete(string) {
 	// No backend to purge cookie data from
 }
 

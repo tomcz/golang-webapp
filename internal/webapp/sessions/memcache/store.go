@@ -1,7 +1,6 @@
 package memcache
 
 import (
-	"context"
 	"errors"
 	"time"
 
@@ -23,7 +22,7 @@ func New(addr string) webapp.SessionStore {
 	}
 }
 
-func (s *memcacheStore) Write(_ context.Context, key string, session map[string]any, maxAge time.Duration) (string, error) {
+func (s *memcacheStore) Write(key string, session map[string]any, maxAge time.Duration) (string, error) {
 	encoded, err := sessions.Encode(session)
 	if err != nil {
 		return "", err
@@ -51,7 +50,7 @@ func (s *memcacheStore) Write(_ context.Context, key string, session map[string]
 	return key, nil
 }
 
-func (s *memcacheStore) Read(_ context.Context, key string) (map[string]any, error) {
+func (s *memcacheStore) Read(key string) (map[string]any, error) {
 	if !sessions.ValidKey(key) {
 		return nil, errors.New("invalid key")
 	}
@@ -62,7 +61,7 @@ func (s *memcacheStore) Read(_ context.Context, key string) (map[string]any, err
 	return sessions.Decode(item.Value)
 }
 
-func (s *memcacheStore) Delete(_ context.Context, key string) {
+func (s *memcacheStore) Delete(key string) {
 	if sessions.ValidKey(key) {
 		_ = s.mdb.Delete(key)
 	}
