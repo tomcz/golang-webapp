@@ -80,7 +80,7 @@ func (s *sqliteCodec) Encode(ctx context.Context, key string, session map[string
 		key = sessions.RandomKey()
 	}
 
-	now := time.Now()
+	now := s.clock.Now()
 	_, err := s.db.ExecContext(ctx, setSessionSQL, key, value, now, now.Add(maxAge))
 	if err != nil {
 		return "", fmt.Errorf("db.Set: %w", err)
