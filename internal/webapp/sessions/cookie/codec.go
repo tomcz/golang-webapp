@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tink-crypto/tink-go/v2/aead/subtle"
+	"github.com/tink-crypto/tink-go/v2/tink"
 	"k8s.io/utils/clock"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
@@ -32,8 +33,8 @@ func keyToBytes(key string) ([]byte, error) {
 }
 
 type cookieCodec struct {
-	key   []byte
-	clock clock.PassiveClock
+	cipher tink.AEAD
+	clock  clock.PassiveClock
 }
 
 func New(sessionKey string) (webapp.SessionCodec, error) {
@@ -41,9 +42,13 @@ func New(sessionKey string) (webapp.SessionCodec, error) {
 	if err != nil {
 		return nil, err
 	}
+	cipher, err := subtle.NewAESGCMSIV(keyBytes)
+	if err != nil {
+		return nil, err
+	}
 	return &cookieCodec{
-		key:   keyBytes,
-		clock: clock.RealClock{},
+		cipher: cipher,
+		clock:  clock.RealClock{},
 	}, nil
 }
 
@@ -61,12 +66,7 @@ func (c *cookieCodec) Encode(_ context.Context, _ string, session map[string]any
 		return "", fmt.Errorf("gob.encode: %w", err)
 	}
 
-	cipher, err := subtle.NewAESGCMSIV(c.key)
-	if err != nil {
-		return "", fmt.Errorf("cipher.new: %w", err)
-	}
-
-	cipherText, err := cipher.Encrypt(buf.Bytes(), nil)
+	cipherText, err := c.cipher.Encrypt(buf.Bytes(), nil)
 	if err != nil {
 		return "", fmt.Errorf("cipher.encrypt: %w", err)
 	}
@@ -84,12 +84,7 @@ func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, e
 		return nil, fmt.Errorf("value.decode: %w", err)
 	}
 
-	cipher, err := subtle.NewAESGCMSIV(c.key)
-	if err != nil {
-		return nil, fmt.Errorf("cipher.new: %w", err)
-	}
-
-	plainText, err := cipher.Decrypt(cipherText, nil)
+	plainText, err := c.cipher.Decrypt(cipherText, nil)
 	if err != nil {
 		return nil, fmt.Errorf("cipher.decrypt: %w", err)
 	}

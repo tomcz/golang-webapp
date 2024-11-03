@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tink-crypto/tink-go/v2/aead/subtle"
 	"gotest.tools/v3/assert"
 	clocks "k8s.io/utils/clock/testing"
 
@@ -15,9 +16,12 @@ func TestCodecRoundTrip(t *testing.T) {
 	now := time.Now()
 	clock := clocks.NewFakePassiveClock(now)
 
+	cipher, err := subtle.NewAESGCMSIV(sessions.RandomBytes())
+	assert.NilError(t, err)
+
 	codec := &cookieCodec{
-		key:   sessions.RandomBytes(),
-		clock: clock,
+		cipher: cipher,
+		clock:  clock,
 	}
 
 	data := map[string]any{"wibble": "wobble"}
@@ -37,9 +41,12 @@ func TestCodecRoundTrip_Expired(t *testing.T) {
 	now := time.Now()
 	clock := clocks.NewFakePassiveClock(now)
 
+	cipher, err := subtle.NewAESGCMSIV(sessions.RandomBytes())
+	assert.NilError(t, err)
+
 	codec := &cookieCodec{
-		key:   sessions.RandomBytes(),
-		clock: clock,
+		cipher: cipher,
+		clock:  clock,
 	}
 
 	data := map[string]any{"wibble": "wobble"}
