@@ -28,6 +28,7 @@ func testDB() (*sql.DB, error) {
 func TestRoundTrip(t *testing.T) {
 	db, err := testDB()
 	assert.NilError(t, err)
+	defer db.Close()
 
 	now := time.Now()
 	clock := clocks.NewFakeClock(now)
@@ -65,6 +66,7 @@ func TestRoundTrip(t *testing.T) {
 func TestRead_Expired(t *testing.T) {
 	db, err := testDB()
 	assert.NilError(t, err)
+	defer db.Close()
 
 	now := time.Now()
 	clock := clocks.NewFakeClock(now)
@@ -93,6 +95,7 @@ func TestRead_Expired(t *testing.T) {
 func TestRead_AutoExpired(t *testing.T) {
 	db, err := testDB()
 	assert.NilError(t, err)
+	defer db.Close()
 
 	now := time.Now()
 	clock := clocks.NewFakeClock(now)
