@@ -14,9 +14,9 @@ import (
 
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/internal/webapp"
-	"github.com/tomcz/golang-webapp/internal/webapp/cookie"
 	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
-	"github.com/tomcz/golang-webapp/internal/webapp/redis"
+	"github.com/tomcz/golang-webapp/internal/webapp/sessions/cookie"
+	"github.com/tomcz/golang-webapp/internal/webapp/sessions/redis"
 )
 
 var (
