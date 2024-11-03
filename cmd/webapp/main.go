@@ -17,8 +17,8 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
 	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 	"github.com/tomcz/golang-webapp/internal/webapp/sessions/cookie"
-	"github.com/tomcz/golang-webapp/internal/webapp/sessions/redis"
-	"github.com/tomcz/golang-webapp/internal/webapp/sessions/sqlite"
+	"github.com/tomcz/golang-webapp/internal/webapp/sessions/memcache"
+	"github.com/tomcz/golang-webapp/internal/webapp/sessions/memory"
 )
 
 var (
@@ -32,13 +32,9 @@ var (
 	tlsKeyFile  = envFlag("tls-key", "TLS_KEY_FILE", "", "For HTTPS service, optional")
 
 	sessionName  = envFlag("session-name", "SESSION_NAME", "_app_session", "Name of HTTP application cookie")
-	sessionStore = envFlag("session-store", "SESSION_STORE", "sqlite", "Store type (sqlite, redis, cookie)")
+	sessionStore = envFlag("session-store", "SESSION_STORE", "memory", "Store type (memory, memcached, cookie)")
 	cookieCipher = envFlag("session-cipher", "SESSION_CIPHER", "", "Cookie cipher key; if not provided a random one will be used")
-	dbFile       = envFlag("session-sqlite", "SESSION_SQLITE", defaultDatabaseFile(), "sqlite session store file")
-	redisAddr    = envFlag("session-redis-addr", "SESSION_REDIS_ADDR", "127.0.0.1:6379", "Redis host:port")
-	redisUser    = envFlag("session-redis-user", "SESSION_REDIS_USER", "", "Redis username, optional")
-	redisPass    = envFlag("session-redis-pass", "SESSION_REDIS_PASS", "", "Redis password, optional")
-	redisTLS     = envFlag("session-redis-tls", "SESSION_REDIS_TLS", "off", "Redis TLS (off, on, insecure)")
+	memcacheAddr = envFlag("session-memcached", "SESSION_MEMCACHED", "127.0.0.1:11211", "Memcached server host:port")
 
 	keygen  = flag.Bool("keygen", false, "Print out a new SESSION_CIPHER and exit")
 	version = flag.Bool("version", false, "Show build version and exit")
@@ -51,14 +47,6 @@ func envFlag(flagName, envName, defaultValue, usage string) *string {
 	}
 	flagUsage := fmt.Sprintf("%s [$%s]", usage, envName)
 	return flag.String(flagName, value, flagUsage)
-}
-
-func defaultDatabaseFile() string {
-	pname, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf("%s.db", pname)
 }
 
 func main() {
@@ -92,7 +80,7 @@ func realMain(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	store, err := createSessionStore(ctx)
+	store, err := createSessionStore()
 	if err != nil {
 		return err
 	}
@@ -131,12 +119,12 @@ func realMain(log *slog.Logger) error {
 	return err
 }
 
-func createSessionStore(ctx context.Context) (webapp.SessionStore, error) {
+func createSessionStore() (webapp.SessionStore, error) {
 	switch *sessionStore {
-	case "sqlite":
-		return sqlite.New(ctx, *dbFile)
-	case "redis":
-		return redis.New(*redisAddr, *redisUser, *redisPass, *redisTLS), nil
+	case "memory":
+		return memory.New(), nil
+	case "memcached":
+		return memcache.New(*memcacheAddr), nil
 	case "cookie":
 		return cookie.New(*cookieCipher)
 	default:
