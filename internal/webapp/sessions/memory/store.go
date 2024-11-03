@@ -25,7 +25,7 @@ func (s *memoryStore) Write(key string, session map[string]any, maxAge time.Dura
 	if err != nil {
 		return "", err
 	}
-	if !sessions.ValidKey(key) {
+	if err = sessions.ValidKey(key); err != nil {
 		key = sessions.RandomKey()
 	}
 	s.cache.Set(key, encoded, maxAge)
@@ -33,18 +33,18 @@ func (s *memoryStore) Write(key string, session map[string]any, maxAge time.Dura
 }
 
 func (s *memoryStore) Read(key string) (map[string]any, error) {
-	if !sessions.ValidKey(key) {
-		return nil, errors.New("invalid key")
+	if err := sessions.ValidKey(key); err != nil {
+		return nil, err
 	}
-	encoded, ok := s.cache.Get(key)
+	value, ok := s.cache.Get(key)
 	if !ok {
 		return nil, errors.New("key not found")
 	}
-	return sessions.Decode(encoded.([]byte))
+	return sessions.Decode(value.([]byte))
 }
 
 func (s *memoryStore) Delete(key string) {
-	if sessions.ValidKey(key) {
+	if err := sessions.ValidKey(key); err == nil {
 		s.cache.Delete(key)
 	}
 }

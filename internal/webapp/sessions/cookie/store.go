@@ -19,8 +19,8 @@ func keyToBytes(key string) ([]byte, error) {
 	if key == "" {
 		return sessions.RandomBytes(), nil
 	}
-	if !sessions.ValidKey(key) {
-		return nil, errors.New("invalid key format")
+	if err := sessions.ValidKey(key); err != nil {
+		return nil, err
 	}
 	buf, err := sessions.KeyBytes(key)
 	if err != nil {
