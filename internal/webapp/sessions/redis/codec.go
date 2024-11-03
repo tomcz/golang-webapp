@@ -7,16 +7,13 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/tink-crypto/tink-go/v2/subtle/random"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
+	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 )
-
-var validKeyPattern = regexp.MustCompile(`^[[:xdigit:]]{64}$`)
 
 type redisCodec struct {
 	rdb *redis.Client
@@ -52,8 +49,8 @@ func (c *redisCodec) Encode(ctx context.Context, key string, session map[string]
 	}
 	value := base64.StdEncoding.EncodeToString(buf.Bytes())
 
-	if !validKeyPattern.MatchString(key) {
-		key = fmt.Sprintf("%x", random.GetRandomBytes(32))
+	if !sessions.ValidKey(key) {
+		key = sessions.RandomKey()
 	}
 
 	if err := c.rdb.Set(ctx, key, value, maxAge).Err(); err != nil {
@@ -63,8 +60,8 @@ func (c *redisCodec) Encode(ctx context.Context, key string, session map[string]
 }
 
 func (c *redisCodec) Decode(ctx context.Context, key string) (map[string]any, error) {
-	if !validKeyPattern.MatchString(key) {
-		return nil, fmt.Errorf("invalid redis key %q", key)
+	if !sessions.ValidKey(key) {
+		return nil, fmt.Errorf("invalid redis key: %q", key)
 	}
 
 	value, err := c.rdb.Get(ctx, key).Result()
@@ -86,7 +83,7 @@ func (c *redisCodec) Decode(ctx context.Context, key string) (map[string]any, er
 }
 
 func (c *redisCodec) Clear(ctx context.Context, key string) {
-	if validKeyPattern.MatchString(key) {
+	if sessions.ValidKey(key) {
 		c.rdb.Del(ctx, key)
 	}
 }

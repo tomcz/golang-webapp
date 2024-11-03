@@ -9,36 +9,24 @@ import (
 	"time"
 
 	"github.com/tink-crypto/tink-go/v2/aead/subtle"
-	"github.com/tink-crypto/tink-go/v2/subtle/random"
 	"k8s.io/utils/clock"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
+	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 )
 
 const sessionExpiresAt = "_Expires_At_"
 
-func init() {
-	gob.Register(time.Time{})
-}
-
-func RandomKey() string {
-	return base64.StdEncoding.EncodeToString(randomKey())
-}
-
-func randomKey() []byte {
-	return random.GetRandomBytes(32)
-}
-
 func keyToBytes(key string) ([]byte, error) {
 	if key == "" {
-		return randomKey(), nil
+		return sessions.RandomBytes(), nil
 	}
-	buf, err := base64.StdEncoding.DecodeString(key)
+	if !sessions.ValidKey(key) {
+		return nil, fmt.Errorf("invalid key format")
+	}
+	buf, err := sessions.KeyBytes(key)
 	if err != nil {
 		return nil, fmt.Errorf("bad key: %w", err)
-	}
-	if len(buf) != 32 {
-		return nil, fmt.Errorf("expected 32-byte key, got %d bytes", len(buf))
 	}
 	return buf, nil
 }

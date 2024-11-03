@@ -4,6 +4,7 @@ go 1.23
 
 require (
 	github.com/alicebob/miniredis/v2 v2.33.0
+	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/tink-crypto/tink-go/v2 v2.2.0

@@ -7,25 +7,27 @@ import (
 
 	"gotest.tools/v3/assert"
 	clocks "k8s.io/utils/clock/testing"
+
+	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 )
 
 func TestCodecRoundTrip(t *testing.T) {
 	now := time.Now()
 	clock := clocks.NewFakePassiveClock(now)
 
-	store := &cookieCodec{
-		key:   randomKey(),
+	codec := &cookieCodec{
+		key:   sessions.RandomBytes(),
 		clock: clock,
 	}
 
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := store.Encode(context.Background(), "", data, time.Hour)
+	encoded, err := codec.Encode(context.Background(), "", data, time.Hour)
 	assert.NilError(t, err)
 
 	clock.SetTime(now.Add(time.Minute))
 
-	decoded, err := store.Decode(context.Background(), encoded)
+	decoded, err := codec.Decode(context.Background(), encoded)
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, data, decoded)
@@ -35,18 +37,18 @@ func TestCodecRoundTrip_Expired(t *testing.T) {
 	now := time.Now()
 	clock := clocks.NewFakePassiveClock(now)
 
-	store := &cookieCodec{
-		key:   randomKey(),
+	codec := &cookieCodec{
+		key:   sessions.RandomBytes(),
 		clock: clock,
 	}
 
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := store.Encode(context.Background(), "", data, time.Minute)
+	encoded, err := codec.Encode(context.Background(), "", data, time.Minute)
 	assert.NilError(t, err)
 
 	clock.SetTime(now.Add(time.Hour))
 
-	_, err = store.Decode(context.Background(), encoded)
+	_, err = codec.Decode(context.Background(), encoded)
 	assert.ErrorContains(t, err, "session expired")
 }

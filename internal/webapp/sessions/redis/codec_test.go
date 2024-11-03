@@ -20,23 +20,23 @@ func TestCodecRoundTrip(t *testing.T) {
 	})
 	defer rdb.Close()
 
-	store := &redisCodec{rdb}
+	codec := &redisCodec{rdb}
 	ctx := context.Background()
 	data := map[string]any{"wibble": "wobble"}
 
-	key1, err := store.Encode(ctx, "", data, time.Hour)
+	key1, err := codec.Encode(ctx, "", data, time.Hour)
 	assert.NilError(t, err)
 
-	decoded, err := store.Decode(ctx, key1)
+	decoded, err := codec.Decode(ctx, key1)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, data, decoded)
 
-	key2, err := store.Encode(ctx, key1, data, time.Hour)
+	key2, err := codec.Encode(ctx, key1, data, time.Hour)
 	assert.NilError(t, err)
 	assert.Equal(t, key1, key2)
 
-	store.Clear(ctx, key1)
+	codec.Clear(ctx, key1)
 
-	_, err = store.Decode(ctx, key1)
+	_, err = codec.Decode(ctx, key1)
 	assert.ErrorIs(t, err, redis.Nil)
 }
