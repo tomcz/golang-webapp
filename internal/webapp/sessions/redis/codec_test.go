@@ -22,18 +22,23 @@ func TestCodecRoundTrip(t *testing.T) {
 
 	codec := &redisCodec{rdb}
 	ctx := context.Background()
-	data := map[string]any{"wibble": "wobble"}
+	data1 := map[string]any{"wibble": "wobble"}
+	data2 := map[string]any{"wibble": "waggle"}
 
-	key1, err := codec.Encode(ctx, "", data, time.Hour)
+	key1, err := codec.Encode(ctx, "", data1, time.Hour)
 	assert.NilError(t, err)
 
 	decoded, err := codec.Decode(ctx, key1)
 	assert.NilError(t, err)
-	assert.DeepEqual(t, data, decoded)
+	assert.DeepEqual(t, data1, decoded)
 
-	key2, err := codec.Encode(ctx, key1, data, time.Hour)
+	key2, err := codec.Encode(ctx, key1, data2, time.Hour)
 	assert.NilError(t, err)
 	assert.Equal(t, key1, key2)
+
+	decoded, err = codec.Decode(ctx, key1)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, data2, decoded)
 
 	codec.Clear(ctx, key1)
 
