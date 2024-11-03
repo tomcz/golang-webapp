@@ -30,12 +30,12 @@ func keyToBytes(key string) ([]byte, error) {
 	return buf, nil
 }
 
-type cookieCodec struct {
+type cookieStore struct {
 	cipher tink.AEAD
 	clock  clock.PassiveClock
 }
 
-func New(sessionKey string) (webapp.SessionCodec, error) {
+func New(sessionKey string) (webapp.SessionStore, error) {
 	keyBytes, err := keyToBytes(sessionKey)
 	if err != nil {
 		return nil, err
@@ -44,14 +44,14 @@ func New(sessionKey string) (webapp.SessionCodec, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &cookieCodec{
+	return &cookieStore{
 		cipher: cipher,
 		clock:  clock.RealClock{},
 	}, nil
 }
 
-func (c *cookieCodec) Encode(_ context.Context, _ string, session map[string]any, maxAge time.Duration) (string, error) {
-	session[sessionExpiresAt] = c.clock.Now().Add(maxAge)
+func (s *cookieStore) Write(_ context.Context, _ string, session map[string]any, maxAge time.Duration) (string, error) {
+	session[sessionExpiresAt] = s.clock.Now().Add(maxAge)
 	defer func() {
 		delete(session, sessionExpiresAt)
 	}()
@@ -61,7 +61,7 @@ func (c *cookieCodec) Encode(_ context.Context, _ string, session map[string]any
 		return "", err
 	}
 
-	cipherText, err := c.cipher.Encrypt(plainText, nil)
+	cipherText, err := s.cipher.Encrypt(plainText, nil)
 	if err != nil {
 		return "", err
 	}
@@ -69,7 +69,7 @@ func (c *cookieCodec) Encode(_ context.Context, _ string, session map[string]any
 	return base64.URLEncoding.EncodeToString(cipherText), nil
 }
 
-func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, error) {
+func (s *cookieStore) Read(_ context.Context, value string) (map[string]any, error) {
 	if value == "" {
 		return nil, errors.New("nothing to decode")
 	}
@@ -79,7 +79,7 @@ func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, e
 		return nil, err
 	}
 
-	plainText, err := c.cipher.Decrypt(cipherText, nil)
+	plainText, err := s.cipher.Decrypt(cipherText, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, e
 	if !ok {
 		return nil, errors.New("session expiry is not a time")
 	}
-	if expiresAt.Before(c.clock.Now()) {
+	if expiresAt.Before(s.clock.Now()) {
 		return nil, errors.New("session has expired")
 	}
 
@@ -105,10 +105,10 @@ func (c *cookieCodec) Decode(_ context.Context, value string) (map[string]any, e
 	return session, nil
 }
 
-func (c *cookieCodec) Clear(context.Context, string) {
+func (s *cookieStore) Delete(context.Context, string) {
 	// No backend to purge cookie data from
 }
 
-func (c *cookieCodec) Close() error {
+func (s *cookieStore) Close() error {
 	return nil // No backend to disconnect
 }

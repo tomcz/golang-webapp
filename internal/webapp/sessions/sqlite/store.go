@@ -38,12 +38,12 @@ const (
 	expireSQL     = `DELETE FROM sessions WHERE expire_at < ?`
 )
 
-type sqliteCodec struct {
+type sqliteStore struct {
 	db    *sql.DB
 	clock clock.WithTicker
 }
 
-func New(ctx context.Context, dbFile string) (webapp.SessionCodec, error) {
+func New(ctx context.Context, dbFile string) (webapp.SessionStore, error) {
 	dsn := fmt.Sprintf("file:%s", dbFile)
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
@@ -54,19 +54,19 @@ func New(ctx context.Context, dbFile string) (webapp.SessionCodec, error) {
 		db.Close()
 		return nil, err
 	}
-	codec := &sqliteCodec{
+	store := &sqliteStore{
 		db:    db,
 		clock: clock.RealClock{},
 	}
-	go codec.regularDatabaseCleanup(ctx)
-	return codec, nil
+	go store.regularDatabaseCleanup(ctx)
+	return store, nil
 }
 
-func (s *sqliteCodec) Close() error {
+func (s *sqliteStore) Close() error {
 	return s.db.Close()
 }
 
-func (s *sqliteCodec) Encode(ctx context.Context, key string, session map[string]any, maxAge time.Duration) (string, error) {
+func (s *sqliteStore) Write(ctx context.Context, key string, session map[string]any, maxAge time.Duration) (string, error) {
 	data, err := sessions.Encode(session)
 	if err != nil {
 		return "", err
@@ -85,7 +85,7 @@ func (s *sqliteCodec) Encode(ctx context.Context, key string, session map[string
 	return key, nil
 }
 
-func (s *sqliteCodec) Decode(ctx context.Context, key string) (map[string]any, error) {
+func (s *sqliteStore) Read(ctx context.Context, key string) (map[string]any, error) {
 	if !sessions.ValidKey(key) {
 		return nil, errors.New("invalid session key")
 	}
@@ -103,13 +103,13 @@ func (s *sqliteCodec) Decode(ctx context.Context, key string) (map[string]any, e
 	return sessions.Decode(buf)
 }
 
-func (s *sqliteCodec) Clear(ctx context.Context, key string) {
+func (s *sqliteStore) Delete(ctx context.Context, key string) {
 	if sessions.ValidKey(key) {
 		_, _ = s.db.ExecContext(ctx, deleteKeySQL, key)
 	}
 }
 
-func (s *sqliteCodec) regularDatabaseCleanup(ctx context.Context) {
+func (s *sqliteStore) regularDatabaseCleanup(ctx context.Context) {
 	ticker := s.clock.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
@@ -122,7 +122,7 @@ func (s *sqliteCodec) regularDatabaseCleanup(ctx context.Context) {
 	}
 }
 
-func (s *sqliteCodec) expireSessions(ctx context.Context, now time.Time) {
+func (s *sqliteStore) expireSessions(ctx context.Context, now time.Time) {
 	_, err := s.db.ExecContext(ctx, expireSQL, now)
 	if err != nil {
 		log.Warn("expire sessions failed", "component", "sqlite", "error", err)

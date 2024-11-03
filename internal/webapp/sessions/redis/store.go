@@ -13,18 +13,18 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 )
 
-type redisCodec struct {
+type redisStore struct {
 	rdb *redis.Client
 }
 
-func New(address, username, password, tlsType string) webapp.SessionCodec {
+func New(address, username, password, tlsType string) webapp.SessionStore {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:      address,
 		Username:  username,
 		Password:  password,
 		TLSConfig: redisTLS(tlsType),
 	})
-	return &redisCodec{rdb}
+	return &redisStore{rdb}
 }
 
 func redisTLS(tlsType string) *tls.Config {
@@ -38,7 +38,7 @@ func redisTLS(tlsType string) *tls.Config {
 	}
 }
 
-func (c *redisCodec) Encode(ctx context.Context, key string, session map[string]any, maxAge time.Duration) (string, error) {
+func (s *redisStore) Write(ctx context.Context, key string, session map[string]any, maxAge time.Duration) (string, error) {
 	buf, err := sessions.Encode(session)
 	if err != nil {
 		return "", err
@@ -49,19 +49,19 @@ func (c *redisCodec) Encode(ctx context.Context, key string, session map[string]
 		key = sessions.RandomKey()
 	}
 
-	err = c.rdb.Set(ctx, key, value, maxAge).Err()
+	err = s.rdb.Set(ctx, key, value, maxAge).Err()
 	if err != nil {
 		return "", err
 	}
 	return key, nil
 }
 
-func (c *redisCodec) Decode(ctx context.Context, key string) (map[string]any, error) {
+func (s *redisStore) Read(ctx context.Context, key string) (map[string]any, error) {
 	if !sessions.ValidKey(key) {
 		return nil, errors.New("invalid session key")
 	}
 
-	value, err := c.rdb.Get(ctx, key).Result()
+	value, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +73,12 @@ func (c *redisCodec) Decode(ctx context.Context, key string) (map[string]any, er
 	return sessions.Decode(buf)
 }
 
-func (c *redisCodec) Clear(ctx context.Context, key string) {
+func (s *redisStore) Delete(ctx context.Context, key string) {
 	if sessions.ValidKey(key) {
-		c.rdb.Del(ctx, key)
+		s.rdb.Del(ctx, key)
 	}
 }
 
-func (c *redisCodec) Close() error {
-	return c.rdb.Close()
+func (s *redisStore) Close() error {
+	return s.rdb.Close()
 }

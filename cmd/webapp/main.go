@@ -92,13 +92,13 @@ func realMain(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	codec, err := createCodec(ctx)
+	store, err := createSessionStore(ctx)
 	if err != nil {
 		return err
 	}
-	defer codec.Close()
+	defer store.Close()
 
-	session := webapp.NewSessionWrapper(*sessionName, codec, webapp.CsrfPerSession)
+	session := webapp.NewSessionWrapper(*sessionName, store, webapp.CsrfPerSession)
 	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers()), withTLS)
 
 	server := &http.Server{
@@ -131,7 +131,7 @@ func realMain(log *slog.Logger) error {
 	return err
 }
 
-func createCodec(ctx context.Context) (webapp.SessionCodec, error) {
+func createSessionStore(ctx context.Context) (webapp.SessionStore, error) {
 	switch *sessionStore {
 	case "sqlite":
 		return sqlite.New(ctx, *dbFile)

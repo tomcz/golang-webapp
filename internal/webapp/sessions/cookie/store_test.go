@@ -12,50 +12,50 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 )
 
-func TestCodecRoundTrip(t *testing.T) {
+func TestRoundTrip(t *testing.T) {
 	now := time.Now()
 	clock := clocks.NewFakePassiveClock(now)
 
 	cipher, err := subtle.NewAESGCMSIV(sessions.RandomBytes())
 	assert.NilError(t, err)
 
-	codec := &cookieCodec{
+	store := &cookieStore{
 		cipher: cipher,
 		clock:  clock,
 	}
 
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := codec.Encode(context.Background(), "", data, time.Hour)
+	encoded, err := store.Write(context.Background(), "", data, time.Hour)
 	assert.NilError(t, err)
 
 	clock.SetTime(now.Add(time.Minute))
 
-	decoded, err := codec.Decode(context.Background(), encoded)
+	decoded, err := store.Read(context.Background(), encoded)
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, data, decoded)
 }
 
-func TestCodecRoundTrip_Expired(t *testing.T) {
+func TestRoundTrip_Expired(t *testing.T) {
 	now := time.Now()
 	clock := clocks.NewFakePassiveClock(now)
 
 	cipher, err := subtle.NewAESGCMSIV(sessions.RandomBytes())
 	assert.NilError(t, err)
 
-	codec := &cookieCodec{
+	store := &cookieStore{
 		cipher: cipher,
 		clock:  clock,
 	}
 
 	data := map[string]any{"wibble": "wobble"}
 
-	encoded, err := codec.Encode(context.Background(), "", data, time.Minute)
+	encoded, err := store.Write(context.Background(), "", data, time.Minute)
 	assert.NilError(t, err)
 
 	clock.SetTime(now.Add(time.Hour))
 
-	_, err = codec.Decode(context.Background(), encoded)
+	_, err = store.Read(context.Background(), encoded)
 	assert.ErrorContains(t, err, "session has expired")
 }
