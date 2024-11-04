@@ -19,7 +19,7 @@ func Encode(in map[string]any) ([]byte, error) {
 	if err := gob.NewEncoder(buf).Encode(in); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return bytes.Clone(buf.Bytes()), nil
 }
 
 func Decode(in []byte) (map[string]any, error) {

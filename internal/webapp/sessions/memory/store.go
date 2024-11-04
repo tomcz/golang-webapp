@@ -1,7 +1,6 @@
 package memory
 
 import (
-	"bytes"
 	"errors"
 	"time"
 
@@ -29,7 +28,7 @@ func (s *memoryStore) Write(key string, session map[string]any, maxAge time.Dura
 	if err = sessions.ValidKey(key); err != nil {
 		key = sessions.RandomKey()
 	}
-	s.cache.Set(key, bytes.Clone(encoded), maxAge)
+	s.cache.Set(key, encoded, maxAge)
 	return key, nil
 }
 
