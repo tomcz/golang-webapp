@@ -10,7 +10,6 @@ require (
 	github.com/unrolled/secure v1.17.0
 	github.com/urfave/negroni v1.0.0
 	gotest.tools/v3 v3.5.1
-	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
 )
 
 require (

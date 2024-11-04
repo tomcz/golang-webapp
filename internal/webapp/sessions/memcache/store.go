@@ -13,7 +13,7 @@ import (
 const thirtyDaysInSeconds = 60 * 60 * 24 * 30
 
 // for replacement in tests
-type memcachedPort interface {
+type memcachedClient interface {
 	Set(item *memcache.Item) error
 	Get(key string) (*memcache.Item, error)
 	Delete(key string) error
@@ -21,7 +21,7 @@ type memcachedPort interface {
 }
 
 type memcacheStore struct {
-	mdb memcachedPort
+	mdb memcachedClient
 }
 
 func New(addr string) webapp.SessionStore {

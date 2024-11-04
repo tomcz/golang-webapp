@@ -7,13 +7,35 @@ import (
 
 	"github.com/tink-crypto/tink-go/v2/aead/subtle"
 	"github.com/tink-crypto/tink-go/v2/tink"
-	"k8s.io/utils/clock"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
 	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 )
 
 const sessionExpiresAt = "_Expires_At_"
+
+// for replacement in tests
+type timeNowFunc func() time.Time
+
+type cookieStore struct {
+	cipher  tink.AEAD
+	timeNow timeNowFunc
+}
+
+func New(sessionKey string) (webapp.SessionStore, error) {
+	keyBytes, err := keyToBytes(sessionKey)
+	if err != nil {
+		return nil, err
+	}
+	cipher, err := subtle.NewAESGCMSIV(keyBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &cookieStore{
+		cipher:  cipher,
+		timeNow: time.Now,
+	}, nil
+}
 
 func keyToBytes(key string) ([]byte, error) {
 	if key == "" {
@@ -29,28 +51,8 @@ func keyToBytes(key string) ([]byte, error) {
 	return buf, nil
 }
 
-type cookieStore struct {
-	cipher tink.AEAD
-	clock  clock.PassiveClock
-}
-
-func New(sessionKey string) (webapp.SessionStore, error) {
-	keyBytes, err := keyToBytes(sessionKey)
-	if err != nil {
-		return nil, err
-	}
-	cipher, err := subtle.NewAESGCMSIV(keyBytes)
-	if err != nil {
-		return nil, err
-	}
-	return &cookieStore{
-		cipher: cipher,
-		clock:  clock.RealClock{},
-	}, nil
-}
-
 func (s *cookieStore) Write(_ string, session map[string]any, maxAge time.Duration) (string, error) {
-	session[sessionExpiresAt] = s.clock.Now().Add(maxAge)
+	session[sessionExpiresAt] = s.timeNow().Add(maxAge)
 	defer func() {
 		delete(session, sessionExpiresAt)
 	}()
@@ -96,7 +98,7 @@ func (s *cookieStore) Read(value string) (map[string]any, error) {
 	if !ok {
 		return nil, errors.New("session expiry is not a time")
 	}
-	if expiresAt.Before(s.clock.Now()) {
+	if expiresAt.Before(s.timeNow()) {
 		return nil, errors.New("session has expired")
 	}
 

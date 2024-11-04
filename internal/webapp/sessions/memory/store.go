@@ -37,12 +37,12 @@ func (s *memoryStore) Read(key string) (map[string]any, error) {
 	if err := sessions.ValidKey(key); err != nil {
 		return nil, err
 	}
-	value, ok := s.cache.Get(key)
-	if !ok {
-		return nil, errors.New("key not found")
+	if entry, found := s.cache.Get(key); found {
+		if encoded, ok := entry.([]byte); ok {
+			return sessions.Decode(encoded)
+		}
 	}
-	encoded := bytes.Clone(value.([]byte))
-	return sessions.Decode(encoded)
+	return nil, errors.New("key not found")
 }
 
 func (s *memoryStore) Delete(key string) {

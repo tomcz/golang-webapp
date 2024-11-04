@@ -10,17 +10,17 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-type testAdaptor struct {
+type testClient struct {
 	cache sync.Map
 }
 
-func (p *testAdaptor) Set(item *memcache.Item) error {
-	p.cache.Store(item.Key, item)
+func (c *testClient) Set(item *memcache.Item) error {
+	c.cache.Store(item.Key, item)
 	return nil
 }
 
-func (p *testAdaptor) Get(key string) (*memcache.Item, error) {
-	if value, found := p.cache.Load(key); found {
+func (c *testClient) Get(key string) (*memcache.Item, error) {
+	if value, found := c.cache.Load(key); found {
 		if item, ok := value.(*memcache.Item); ok {
 			if item.Expiration > thirtyDaysInSeconds {
 				return nil, errors.New("unexpected expiration")
@@ -31,17 +31,17 @@ func (p *testAdaptor) Get(key string) (*memcache.Item, error) {
 	return nil, memcache.ErrCacheMiss
 }
 
-func (p *testAdaptor) Delete(key string) error {
-	p.cache.Delete(key)
+func (c *testClient) Delete(key string) error {
+	c.cache.Delete(key)
 	return nil
 }
 
-func (p *testAdaptor) Close() error {
+func (c *testClient) Close() error {
 	return nil
 }
 
 func TestRoundTrip(t *testing.T) {
-	store := &memcacheStore{mdb: &testAdaptor{}}
+	store := &memcacheStore{mdb: &testClient{}}
 
 	data := map[string]any{"wibble": "wobble"}
 
