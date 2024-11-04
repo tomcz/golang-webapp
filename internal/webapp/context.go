@@ -54,7 +54,7 @@ func currentMetadataFields(r *http.Request) (*metadataFields, bool) {
 	return md, ok
 }
 
-func RId(r *http.Request) string {
+func ReqID(r *http.Request) string {
 	if md, ok := currentMetadataFields(r); ok {
 		return md.requestID
 	}

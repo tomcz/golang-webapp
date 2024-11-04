@@ -14,7 +14,7 @@ import (
 
 func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
 	RSet(r, "error", err)
-	msg = fmt.Sprintf("ID: %s\nError: %s\n", RId(r), msg)
+	msg = fmt.Sprintf("ID: %s\nError: %s\n", ReqID(r), msg)
 	http.Error(w, msg, statusCode)
 }
 
@@ -99,34 +99,6 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	writeBuffered(w, r, tmpl, data, cfg)
 }
 
-func writeUnbuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Template, data map[string]any, cfg *renderCfg) {
-	w.Header().Set("Content-Type", cfg.contentType)
-	w.WriteHeader(cfg.statusCode)
-	err := tmpl.ExecuteTemplate(w, cfg.templateName, data)
-	if err != nil {
-		RLog(r).Error("unbuffered write failed", "error", err)
-	}
-}
-
-func writeBuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Template, data map[string]any, cfg *renderCfg) {
-	buf := BufBorrow()
-	defer BufReturn(buf)
-
-	err := tmpl.ExecuteTemplate(buf, cfg.templateName, data)
-	if err != nil {
-		err = fmt.Errorf("template.exec: %w", err)
-		RenderError(w, r, err, "Failed to execute template", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", cfg.contentType)
-	w.WriteHeader(cfg.statusCode)
-	_, err = buf.WriteTo(w)
-	if err != nil {
-		RLog(r).Error("buffered write failed", "error", err)
-	}
-}
-
 // Generally we will write once and read many times so using a sync.Map
 // is preferred as it reduces lock contention compared to a sync.RWMutex.
 var tmplCache sync.Map
@@ -173,4 +145,32 @@ func readTemplate(path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s read failed: %w", path, err)
 	}
 	return buf, nil
+}
+
+func writeUnbuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Template, data map[string]any, cfg *renderCfg) {
+	w.Header().Set("Content-Type", cfg.contentType)
+	w.WriteHeader(cfg.statusCode)
+	err := tmpl.ExecuteTemplate(w, cfg.templateName, data)
+	if err != nil {
+		RLog(r).Error("unbuffered write failed", "error", err)
+	}
+}
+
+func writeBuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Template, data map[string]any, cfg *renderCfg) {
+	buf := BufBorrow()
+	defer BufReturn(buf)
+
+	err := tmpl.ExecuteTemplate(buf, cfg.templateName, data)
+	if err != nil {
+		err = fmt.Errorf("template.exec: %w", err)
+		RenderError(w, r, err, "Failed to execute template", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", cfg.contentType)
+	w.WriteHeader(cfg.statusCode)
+	_, err = buf.WriteTo(w)
+	if err != nil {
+		RLog(r).Error("buffered write failed", "error", err)
+	}
 }
