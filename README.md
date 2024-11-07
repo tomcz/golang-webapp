@@ -1,6 +1,6 @@
 # golang-webapp
 
-This project provides a basic web application [skeleton](https://wiki.c2.com/?WalkingSkeleton) written in golang, to make it easier to get something rolling without trying to figure out how to link all the bits together.
+This project provides a basic web application [skeleton](https://wiki.c2.com/?WalkingSkeleton) written in golang, to make it easier to get something rolling without trying to figure out how to link all the bits together. Instead of relying on third-party http routing and rendering frameworks this web application attempts to stick to packages provided by the golang sdk itself. Third-party packages are used to provide low-level security middleware and session handling capabilities.
 
 Features:
 
