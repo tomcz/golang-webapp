@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/internal/webapp"
@@ -90,13 +91,9 @@ func realMain(log *slog.Logger) error {
 	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers()), withTLS)
 
 	server := &http.Server{
-		Addr:    *listenAddr,
-		Handler: handler,
-		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
-		// to prevent connections from taking resources indefinitely.
-	}
-	if withTLS {
-		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
+		Addr:              *listenAddr,
+		Handler:           handler,
+		ReadHeaderTimeout: time.Minute,
 	}
 
 	go func() {
@@ -108,6 +105,7 @@ func realMain(log *slog.Logger) error {
 	ll := log.With("addr", *listenAddr, "sessions", *sessionStore)
 	if withTLS {
 		ll.Info("starting server with TLS")
+		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 		err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
 	} else {
 		ll.Info("starting server without TLS")
