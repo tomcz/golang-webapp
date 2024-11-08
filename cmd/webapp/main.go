@@ -90,6 +90,8 @@ func realMain(log *slog.Logger) error {
 		Addr:              *listenAddr,
 		Handler:           handler,
 		ReadHeaderTimeout: time.Minute,
+		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
+		// to prevent connections from taking resources indefinitely.
 	}
 
 	go func() {
