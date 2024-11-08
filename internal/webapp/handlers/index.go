@@ -20,9 +20,9 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateIndex(w http.ResponseWriter, r *http.Request) {
-	name := strings.TrimSpace(r.PostFormValue("name"))
-	if name == "" {
-		name = "World"
+	nameParam := strings.TrimSpace(r.PostFormValue("name"))
+	if nameParam == "" {
+		nameParam = "World"
 	}
 	var opts []webapp.RenderOpt
 	if isPartial(r) {
@@ -32,6 +32,6 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 	data := authData(r)
-	data["Name"] = name
+	data["Name"] = nameParam
 	webapp.Render(w, r, "hello.gohtml", data, opts...)
 }

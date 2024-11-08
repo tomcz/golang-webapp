@@ -124,7 +124,7 @@ func createSessionStore() (webapp.SessionStore, error) {
 	case "cookie":
 		return cookie.New(*cookieCipher)
 	default:
-		return nil, fmt.Errorf("unknown session store: %q", *sessionStore)
+		return nil, fmt.Errorf("unknown session store %q", *sessionStore)
 	}
 }
 
