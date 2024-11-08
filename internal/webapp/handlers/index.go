@@ -9,10 +9,13 @@ import (
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
 	session := webapp.CurrentSession(r)
-	session.AddFlashError("example flash error message")
-	session.AddFlashWarning("example flash warning message")
-	session.AddFlashMessage("example flash generic message")
-	session.AddFlashSuccess("example flash success message")
+	if session.GetString("examples_shown") != "yes" {
+		session.AddFlashError("example flash error message")
+		session.AddFlashWarning("example flash warning message")
+		session.AddFlashMessage("example flash generic message")
+		session.AddFlashSuccess("example flash success message")
+		session.Set("examples_shown", "yes")
+	}
 	webapp.Render(w, r, "index.gohtml", authData(r))
 }
 
