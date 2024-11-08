@@ -18,5 +18,5 @@ func exampleError(w http.ResponseWriter, r *http.Request) {
 }
 
 func examplePanic(http.ResponseWriter, *http.Request) {
-	panic("wobble")
+	panic("yikes")
 }
