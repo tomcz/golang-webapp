@@ -25,7 +25,7 @@ import (
 var (
 	knownUsers = envFlag("known-users", "KNOWN_USERS", "", "Valid 'user:password,user2:password2,...' combinations")
 
-	logLevel = envFlag("log-level", "LOG_LEVEL", "info", "Logging level (debug, info, warn)")
+	logLevel = envFlag("log-level", "LOG_LEVEL", "info", "Logging level (debug, info, warn, error)")
 	logType  = envFlag("log-type", "LOG_TYPE", "default", "Logger type (default, text, json)")
 
 	listenAddr  = envFlag("listen-addr", "LISTEN_ADDR", ":3000", "Service 'ip:port' listen address")
@@ -63,12 +63,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	log, err := setupLogging()
-	if err != nil {
-		slog.Error("logging setup failed", "error", err)
-		os.Exit(1)
-	}
-	if err = realMain(log); err != nil {
+	log := setupLogging()
+	if err := realMain(log); err != nil {
 		log.Error("application failed", "error", err)
 		os.Exit(1)
 	}
@@ -126,7 +122,7 @@ func createSessionStore() (webapp.SessionStore, error) {
 	case "cookie":
 		return cookie.New(*cookieCipher)
 	default:
-		return nil, fmt.Errorf("unknown session store type: %q", *sessionStore)
+		return nil, fmt.Errorf("unknown session store: %q", *sessionStore)
 	}
 }
 
@@ -145,20 +141,25 @@ func parseKnownUsers() map[string]string {
 	return users
 }
 
-func setupLogging() (*slog.Logger, error) {
-	level := slog.LevelInfo
-	//goland:noinspection GoDfaNilDereference
-	err := level.UnmarshalText([]byte(*logLevel))
-	if err != nil {
-		return nil, fmt.Errorf("bad LOG_LEVEL: %w", err)
+func setupLogging() *slog.Logger {
+	var level slog.Level
+	switch *logLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
 	}
 	logDefaults := []any{"build", build.Version()}
-	switch strings.ToUpper(*logType) {
-	case "TEXT":
+	switch *logType {
+	case "text":
 		opts := &slog.HandlerOptions{Level: level}
 		h := slog.NewTextHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
-	case "JSON":
+	case "json":
 		opts := &slog.HandlerOptions{Level: level}
 		h := slog.NewJSONHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
@@ -166,5 +167,5 @@ func setupLogging() (*slog.Logger, error) {
 		slog.SetLogLoggerLevel(level)
 		slog.SetDefault(slog.Default().With(logDefaults...))
 	}
-	return slog.With("component", "main"), nil
+	return slog.With("component", "main")
 }
