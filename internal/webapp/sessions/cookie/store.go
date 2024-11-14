@@ -39,12 +39,12 @@ func New(sessionKey string) (webapp.SessionStore, error) {
 
 func keyToBytes(key string) ([]byte, error) {
 	if key == "" {
-		return sessions.RandomBytes(), nil
+		return sessions.KeyBytes(), nil
 	}
-	if err := sessions.ValidKey(key); err != nil {
+	if err := sessions.ValidateKey(key); err != nil {
 		return nil, err
 	}
-	buf, err := sessions.KeyBytes(key)
+	buf, err := sessions.DecodeKey(key)
 	if err != nil {
 		return nil, err
 	}

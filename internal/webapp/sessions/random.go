@@ -10,15 +10,19 @@ import (
 
 var validKeyPattern = regexp.MustCompile(`^[[:xdigit:]]{64}$`)
 
-func RandomKey() string {
-	return hex.EncodeToString(RandomBytes())
+func NewKey() string {
+	return hex.EncodeToString(KeyBytes())
 }
 
-func RandomBytes() []byte {
+func KeyBytes() []byte {
 	return random.GetRandomBytes(32)
 }
 
-func ValidKey(key string) error {
+func DecodeKey(key string) ([]byte, error) {
+	return hex.DecodeString(key)
+}
+
+func ValidateKey(key string) error {
 	if key == "" {
 		return errors.New("empty key")
 	}
@@ -26,8 +30,4 @@ func ValidKey(key string) error {
 		return nil
 	}
 	return errors.New("invalid key")
-}
-
-func KeyBytes(key string) ([]byte, error) {
-	return hex.DecodeString(key)
 }

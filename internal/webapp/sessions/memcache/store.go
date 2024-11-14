@@ -35,8 +35,8 @@ func (s *memcacheStore) Write(key string, session map[string]any, maxAge time.Du
 	if err != nil {
 		return "", err
 	}
-	if err = sessions.ValidKey(key); err != nil {
-		key = sessions.RandomKey()
+	if sessions.ValidateKey(key) != nil {
+		key = sessions.NewKey()
 	}
 	// Ref: https://github.com/memcached/memcached/wiki/Programming#expiration
 	// Expiration times are specified in unsigned integer seconds.
@@ -59,7 +59,7 @@ func (s *memcacheStore) Write(key string, session map[string]any, maxAge time.Du
 }
 
 func (s *memcacheStore) Read(key string) (map[string]any, error) {
-	if err := sessions.ValidKey(key); err != nil {
+	if err := sessions.ValidateKey(key); err != nil {
 		return nil, err
 	}
 	item, err := s.mdb.Get(key)
@@ -70,7 +70,7 @@ func (s *memcacheStore) Read(key string) (map[string]any, error) {
 }
 
 func (s *memcacheStore) Delete(key string) {
-	if err := sessions.ValidKey(key); err == nil {
+	if sessions.ValidateKey(key) == nil {
 		_ = s.mdb.Delete(key)
 	}
 }

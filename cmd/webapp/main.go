@@ -54,7 +54,7 @@ func main() {
 	flag.Parse()
 
 	if *keygen {
-		fmt.Println(sessions.RandomKey())
+		fmt.Println(sessions.NewKey())
 		os.Exit(0)
 	}
 
@@ -124,7 +124,7 @@ func createSessionStore() (webapp.SessionStore, error) {
 	case "cookie":
 		return cookie.New(*cookieCipher)
 	default:
-		return nil, fmt.Errorf("unknown session store %q", *sessionStore)
+		return nil, fmt.Errorf("%q is not a valid session store", *sessionStore)
 	}
 }
 
