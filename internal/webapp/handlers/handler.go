@@ -7,24 +7,24 @@ import (
 )
 
 func NewHandler(sw webapp.SessionWrapper, knownUsers map[string]string) http.Handler {
-	mux := webapp.NewRouter()
+	r := webapp.NewRouter()
 
 	// no session
-	mux.Handle("/{$}", http.RedirectHandler("/index", http.StatusFound))
-	mux.HandleFunc("/error", exampleError)
-	mux.HandleFunc("/panic", examplePanic)
-	mux.HandleFunc("/ping", examplePing)
+	r.Handle("/{$}", "index", http.RedirectHandler("/index", http.StatusFound))
+	r.HandleFunc("/error", "exampleError", exampleError)
+	r.HandleFunc("/panic", "examplePanic", examplePanic)
+	r.HandleFunc("/ping", "examplePing", examplePing)
 
 	// unauthenticated, with session
-	mux.HandleFunc("GET /login", public(sw, showLogin))
-	mux.HandleFunc("POST /login", public(sw, handleLogin(knownUsers)))
-	mux.HandleFunc("/logout", public(sw, handleLogout))
+	r.HandleFunc("GET /login", "showLogin", public(sw, showLogin))
+	r.HandleFunc("POST /login", "handleLogin", public(sw, handleLogin(knownUsers)))
+	r.HandleFunc("/logout", "handleLogout", public(sw, handleLogout))
 
 	// authenticated, session required
-	mux.HandleFunc("GET /index", private(sw, showIndex))
-	mux.HandleFunc("POST /index", private(sw, updateIndex))
+	r.HandleFunc("GET /index", "showIndex", private(sw, showIndex))
+	r.HandleFunc("POST /index", "updateIndex", private(sw, updateIndex))
 
-	return webapp.DynamicCacheControl(mux)
+	return r.Handler()
 }
 
 func isPartial(r *http.Request) bool {

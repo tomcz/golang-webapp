@@ -13,10 +13,10 @@ func registerStaticAssetRoutes(mux *http.ServeMux) {
 	// static paths to prevent browsers from using old assets with new deployments.
 	prefix := fmt.Sprintf("/static/%s/", build.Commit())
 	h := http.StripPrefix(prefix, http.FileServer(static.FS))
-	mux.Handle("/static/", staticCacheControl(h))
+	mux.Handle("/static/", withStaticCacheControl(withHandlerName("static", h)))
 }
 
-func staticCacheControl(next http.Handler) http.Handler {
+func withStaticCacheControl(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if build.IsProd {
 			// embedded content can be cached by the browser for 10 minutes
