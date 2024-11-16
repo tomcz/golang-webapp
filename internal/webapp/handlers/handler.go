@@ -7,7 +7,7 @@ import (
 )
 
 func NewHandler(sw webapp.SessionWrapper, knownUsers map[string]string) http.Handler {
-	mux := http.NewServeMux()
+	mux := webapp.NewRouter()
 
 	// no session
 	mux.Handle("/{$}", http.RedirectHandler("/index", http.StatusFound))
@@ -24,7 +24,6 @@ func NewHandler(sw webapp.SessionWrapper, knownUsers map[string]string) http.Han
 	mux.HandleFunc("GET /index", private(sw, showIndex))
 	mux.HandleFunc("POST /index", private(sw, updateIndex))
 
-	webapp.RegisterStaticAssetRoutes(mux)
 	return webapp.DynamicCacheControl(mux)
 }
 

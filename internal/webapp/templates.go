@@ -12,12 +12,6 @@ import (
 	"github.com/tomcz/golang-webapp/templates"
 )
 
-func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
-	RSet(r, "error", err)
-	msg = fmt.Sprintf("ID: %s\nError: %s\n", ReqID(r), msg)
-	http.Error(w, msg, statusCode)
-}
-
 type renderCfg struct {
 	layoutFile   string
 	templateName string

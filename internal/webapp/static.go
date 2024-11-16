@@ -8,7 +8,7 @@ import (
 	"github.com/tomcz/golang-webapp/static"
 )
 
-func RegisterStaticAssetRoutes(mux *http.ServeMux) {
+func registerStaticAssetRoutes(mux *http.ServeMux) {
 	// Old-school cache-busting technique: add commit info so that we can use versioned
 	// static paths to prevent browsers from using old assets with new deployments.
 	prefix := fmt.Sprintf("/static/%s/", build.Commit())
