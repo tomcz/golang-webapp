@@ -11,10 +11,10 @@ import (
 var validKeyPattern = regexp.MustCompile(`^[[:xdigit:]]{64}$`)
 
 func NewKey() string {
-	return hex.EncodeToString(KeyBytes())
+	return hex.EncodeToString(NewKeyBytes())
 }
 
-func KeyBytes() []byte {
+func NewKeyBytes() []byte {
 	return random.GetRandomBytes(32)
 }
 

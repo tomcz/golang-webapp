@@ -42,7 +42,7 @@ func (s *memcacheStore) Write(key string, session map[string]any, maxAge time.Du
 	// Expiration times are specified in unsigned integer seconds.
 	// They can be set from 0, meaning "never expire", to 30 days (60*60*24*30).
 	// Any time higher than 30 days is interpreted as a unix timestamp date.
-	// If you want to expire an object on january 1st of next year, this is how you do that.
+	// If you want to expire an object on January 1st of next year, this is how you do that.
 	maxAgeInSeconds := int32(maxAge.Seconds())
 	if maxAgeInSeconds > thirtyDaysInSeconds {
 		maxAgeInSeconds = int32(time.Now().Add(maxAge).Unix())

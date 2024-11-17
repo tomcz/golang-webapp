@@ -39,16 +39,12 @@ func New(sessionKey string) (webapp.SessionStore, error) {
 
 func keyToBytes(key string) ([]byte, error) {
 	if key == "" {
-		return sessions.KeyBytes(), nil
+		return sessions.NewKeyBytes(), nil
 	}
 	if err := sessions.ValidateKey(key); err != nil {
 		return nil, err
 	}
-	buf, err := sessions.DecodeKey(key)
-	if err != nil {
-		return nil, err
-	}
-	return buf, nil
+	return sessions.DecodeKey(key)
 }
 
 func (s *cookieStore) Write(_ string, session map[string]any, maxAge time.Duration) (string, error) {

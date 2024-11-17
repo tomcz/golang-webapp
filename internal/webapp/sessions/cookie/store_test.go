@@ -11,7 +11,7 @@ import (
 )
 
 func TestRoundTrip(t *testing.T) {
-	cipher, err := subtle.NewAESGCMSIV(sessions.KeyBytes())
+	cipher, err := subtle.NewAESGCMSIV(sessions.NewKeyBytes())
 	assert.NilError(t, err)
 
 	now := time.Now()
@@ -34,7 +34,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestRoundTrip_Expired(t *testing.T) {
-	cipher, err := subtle.NewAESGCMSIV(sessions.KeyBytes())
+	cipher, err := subtle.NewAESGCMSIV(sessions.NewKeyBytes())
 	assert.NilError(t, err)
 
 	now := time.Now()
