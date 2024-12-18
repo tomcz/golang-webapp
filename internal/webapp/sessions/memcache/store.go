@@ -10,8 +10,6 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 )
 
-const thirtyDaysInSeconds = 60 * 60 * 24 * 30
-
 // for replacement in tests
 type memcachedClient interface {
 	Set(item *memcache.Item) error
@@ -29,6 +27,8 @@ func New(addr string) webapp.SessionStore {
 		mdb: memcache.New(addr),
 	}
 }
+
+const thirtyDaysInSeconds = 60 * 60 * 24 * 30
 
 func (s *memcacheStore) Write(key string, session map[string]any, maxAge time.Duration) (string, error) {
 	encoded, err := sessions.Encode(session)

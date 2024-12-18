@@ -14,12 +14,9 @@ import (
 
 const sessionExpiresAt = "_Expires_At_"
 
-// for replacement in tests
-type timeNowFunc func() time.Time
-
 type cookieStore struct {
 	cipher  tink.AEAD
-	timeNow timeNowFunc
+	timeNow func() time.Time
 }
 
 func New(sessionKey string) (webapp.SessionStore, error) {
