@@ -46,7 +46,7 @@ func envFlag(flagName, envName, defaultValue, usage string) *string {
 	if value == "" {
 		value = defaultValue
 	}
-	flagUsage := fmt.Sprintf("%s [$%s]", usage, envName)
+	flagUsage := fmt.Sprintf("%s [env:%s]", usage, envName)
 	return flag.String(flagName, value, flagUsage)
 }
 
