@@ -112,9 +112,9 @@ func (s *sessionWrapper) loadSession(r *http.Request) (map[string]any, error) {
 	return s.store.Read(s.cookieValue(r))
 }
 
-func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, data map[string]any) error {
+func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, session map[string]any) error {
 	oldValue := s.cookieValue(r)
-	if len(data) == 0 {
+	if len(session) == 0 {
 		s.store.Delete(oldValue)
 		cookie := &http.Cookie{
 			Name:     s.name,
@@ -126,7 +126,7 @@ func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, dat
 		http.SetCookie(w, cookie)
 		return nil
 	}
-	newValue, err := s.store.Write(oldValue, data, s.maxAge)
+	newValue, err := s.store.Write(oldValue, session, s.maxAge)
 	if err != nil {
 		return err
 	}
