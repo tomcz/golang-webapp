@@ -163,11 +163,11 @@ func (s *sessionWrapper) isCsrfSafe(w http.ResponseWriter, r *http.Request, cs *
 		requestToken = r.FormValue(CsrfFormToken)
 	}
 	if requestToken == "" {
-		return csrfFailed(w, r, errors.New("no csrf token in request"))
+		return notCsrfSafe(w, r, errors.New("no csrf token in request"))
 	}
 	sessionToken := cs.GetString(sessionCsrfToken)
 	if sessionToken == "" {
-		return csrfFailed(w, r, errors.New("no csrf token in session"))
+		return notCsrfSafe(w, r, errors.New("no csrf token in session"))
 	}
 	if s.csrf == CsrfPerRequest {
 		cs.Delete(sessionCsrfToken)
@@ -181,10 +181,10 @@ func (s *sessionWrapper) isCsrfSafe(w http.ResponseWriter, r *http.Request, cs *
 			err = errors.Join(err, fail)
 		}
 	}
-	return csrfFailed(w, r, err)
+	return notCsrfSafe(w, r, err)
 }
 
-func csrfFailed(w http.ResponseWriter, r *http.Request, err error) bool {
+func notCsrfSafe(w http.ResponseWriter, r *http.Request, err error) bool {
 	HttpError(w, r, http.StatusBadRequest, "CSRF validation failed", err)
 	return false
 }
