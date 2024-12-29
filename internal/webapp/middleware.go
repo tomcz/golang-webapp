@@ -35,7 +35,7 @@ func panicRecovery(next http.Handler) http.Handler {
 				stack := string(debug.Stack())
 				RSet(r, "panic_stack", stack)
 				err := fmt.Errorf("panic: %v", p)
-				RenderError(w, r, err, "Request failed", http.StatusInternalServerError)
+				HttpError(w, r, http.StatusInternalServerError, "Request failed", err)
 			}
 		}()
 		next.ServeHTTP(w, r)

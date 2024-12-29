@@ -1,9 +1,6 @@
 package webapp
 
-import (
-	"fmt"
-	"net/http"
-)
+import "net/http"
 
 type Router struct {
 	mux *http.ServeMux
@@ -45,10 +42,4 @@ func RedirectToUrl(w http.ResponseWriter, r *http.Request, url string) {
 	if saveSession(w, r) {
 		http.Redirect(w, r, url, http.StatusFound)
 	}
-}
-
-func RenderError(w http.ResponseWriter, r *http.Request, err error, msg string, statusCode int) {
-	RSet(r, "error", err)
-	msg = fmt.Sprintf("ID: %s\nError: %s\n", ReqID(r), msg)
-	http.Error(w, msg, statusCode)
 }

@@ -80,7 +80,7 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	tmpl, err := newTemplate(cfg.layoutFile, templateFile)
 	if err != nil {
 		err = fmt.Errorf("template.new: %w", err)
-		RenderError(w, r, err, "Failed to create template", http.StatusInternalServerError)
+		HttpError(w, r, http.StatusInternalServerError, "Failed to create template", err)
 		return
 	}
 
@@ -157,7 +157,7 @@ func writeBuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Templa
 	err := tmpl.ExecuteTemplate(buf, cfg.templateName, data)
 	if err != nil {
 		err = fmt.Errorf("template.exec: %w", err)
-		RenderError(w, r, err, "Failed to execute template", http.StatusInternalServerError)
+		HttpError(w, r, http.StatusInternalServerError, "Failed to execute template", err)
 		return
 	}
 

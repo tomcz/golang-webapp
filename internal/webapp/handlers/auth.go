@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -28,9 +29,9 @@ func private(sw webapp.SessionWrapper, next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if isPartial(r) {
-			//goland:noinspection GoErrorStringFormat
-			err := fmt.Errorf("Unauthorised, please reload page to sign in.")
-			webapp.RenderError(w, r, err, err.Error(), http.StatusUnauthorized)
+			err := errors.New("no user in session")
+			msg := "Unauthorised, please reload page to sign in."
+			webapp.HttpError(w, r, http.StatusUnauthorized, msg, err)
 			return
 		}
 		path := r.URL.Path

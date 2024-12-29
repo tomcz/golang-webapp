@@ -9,12 +9,12 @@ import (
 )
 
 func examplePing(w http.ResponseWriter, r *http.Request) {
-	webapp.RDebug(r)
+	webapp.RDebug(r) // don't log these requests
 	fmt.Fprintln(w, "Pong")
 }
 
 func exampleError(w http.ResponseWriter, r *http.Request) {
-	webapp.RenderError(w, r, errors.New("oops"), "Example error", http.StatusInternalServerError)
+	webapp.HttpError(w, r, http.StatusInternalServerError, "Example error", errors.New("oops"))
 }
 
 func examplePanic(http.ResponseWriter, *http.Request) {

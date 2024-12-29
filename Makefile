@@ -20,7 +20,7 @@ endif
 
 .PHONY: lint
 lint:
-	golangci-lint run
+	golangci-lint run --timeout 10m
 
 .PHONY: tidy
 tidy:

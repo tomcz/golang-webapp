@@ -185,7 +185,7 @@ func (s *sessionWrapper) isCsrfSafe(w http.ResponseWriter, r *http.Request, cs *
 }
 
 func csrfFailed(w http.ResponseWriter, r *http.Request, err error) bool {
-	RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
+	HttpError(w, r, http.StatusBadRequest, "CSRF validation failed", err)
 	return false
 }
 
@@ -236,7 +236,7 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 	}
 	err := s.wrapper.saveSession(w, r, s.session)
 	if err != nil {
-		RenderError(w, r, err, "Failed to save session", http.StatusInternalServerError)
+		HttpError(w, r, http.StatusInternalServerError, "Failed to save session", err)
 		return false
 	}
 	return true
