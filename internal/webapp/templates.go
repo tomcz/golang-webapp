@@ -22,6 +22,10 @@ type renderCfg struct {
 
 type RenderOpt func(cfg *renderCfg)
 
+func RenderWithoutLayoutFile() RenderOpt {
+	return RenderWithLayoutFile("")
+}
+
 func RenderWithLayoutFile(layoutFile string) RenderOpt {
 	return func(cfg *renderCfg) {
 		cfg.layoutFile = layoutFile

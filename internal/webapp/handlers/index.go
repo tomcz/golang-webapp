@@ -28,7 +28,7 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 	if isPartial(r) {
 		opts = append(opts,
 			webapp.RenderWithTemplateName("body"),
-			webapp.RenderWithLayoutFile(""),
+			webapp.RenderWithoutLayoutFile(),
 		)
 	}
 	data := authData(r)
