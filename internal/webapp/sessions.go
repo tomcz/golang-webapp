@@ -2,13 +2,11 @@ package webapp
 
 import (
 	"context"
-	"encoding/hex"
+	"crypto/subtle"
 	"errors"
 	"io"
 	"net/http"
 	"time"
-
-	"github.com/tink-crypto/tink-go/v2/subtle/random"
 )
 
 const (
@@ -96,7 +94,7 @@ func (s *sessionWrapper) Wrap(next http.HandlerFunc) http.HandlerFunc {
 		}
 		session := &currentSession{session: data, wrapper: s}
 		r = r.WithContext(context.WithValue(r.Context(), currentSessionKey, session))
-		if s.csrfSafe(w, r, session) {
+		if s.isCsrfSafe(w, r, session) {
 			next(w, r)
 		}
 	}
@@ -153,43 +151,42 @@ var csrfSafeMethods = map[string]bool{
 	http.MethodTrace:   true,
 }
 
-func (s *sessionWrapper) csrfSafe(w http.ResponseWriter, r *http.Request, cs *currentSession) bool {
+func (s *sessionWrapper) isCsrfSafe(w http.ResponseWriter, r *http.Request, cs *currentSession) bool {
 	if csrfSafeMethods[r.Method] {
 		return true
 	}
 	if s.csrf == CsrfDisabled {
 		return true
 	}
-	sessionToken := cs.GetString(sessionCsrfToken)
-	if sessionToken == "" {
-		err := errors.New("no csrf token in session")
-		RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
-		return false
-	}
-	if s.csrf == CsrfPerRequest {
-		cs.Delete(sessionCsrfToken)
-	}
 	requestToken := r.Header.Get(CsrfHttpHeader)
 	if requestToken == "" {
 		requestToken = r.FormValue(CsrfFormToken)
 	}
-	var err error
 	if requestToken == "" {
-		err = errors.New("no csrf token in request")
+		return csrfFailed(w, r, errors.New("no csrf token in request"))
 	}
-	if requestToken != sessionToken {
-		err = errors.New("csrf token mismatch")
+	sessionToken := cs.GetString(sessionCsrfToken)
+	if sessionToken == "" {
+		return csrfFailed(w, r, errors.New("no csrf token in session"))
 	}
-	if err != nil {
-		if s.csrf == CsrfPerRequest {
-			if fail := s.saveSession(w, r, cs.session); fail != nil {
-				err = errors.Join(err, fail)
-			}
+	if s.csrf == CsrfPerRequest {
+		cs.Delete(sessionCsrfToken)
+	}
+	if subtle.ConstantTimeCompare([]byte(requestToken), []byte(sessionToken)) != 0 {
+		return true
+	}
+	err := errors.New("csrf token mismatch")
+	if s.csrf == CsrfPerRequest {
+		if fail := s.saveSession(w, r, cs.session); fail != nil {
+			err = errors.Join(err, fail)
 		}
-		RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
-		return false
 	}
-	return true
+	return csrfFailed(w, r, err)
+}
+
+func csrfFailed(w http.ResponseWriter, r *http.Request, err error) bool {
+	RenderError(w, r, err, "CSRF validation failed", http.StatusBadRequest)
+	return false
 }
 
 func CurrentSession(r *http.Request) Session {
@@ -225,7 +222,7 @@ func getSessionData(r *http.Request) map[string]any {
 		csrfToken = s.GetString(sessionCsrfToken)
 	}
 	if csrfToken == "" {
-		csrfToken = hex.EncodeToString(random.GetRandomBytes(32))
+		csrfToken = longRandomText()
 		s.Set(sessionCsrfToken, csrfToken)
 	}
 	data[CsrfTokenKey] = csrfToken

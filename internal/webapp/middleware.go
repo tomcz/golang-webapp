@@ -1,7 +1,6 @@
 package webapp
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -9,7 +8,6 @@ import (
 	"time"
 
 	"github.com/streadway/handy/breaker"
-	"github.com/tink-crypto/tink-go/v2/subtle/random"
 	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
 )
@@ -48,7 +46,7 @@ func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		reqID := hex.EncodeToString(random.GetRandomBytes(8))
+		reqID := shortRandomText()
 		log := slog.With("component", "web", "req_id", reqID)
 		fields := newMetadataFields(reqID, log)
 

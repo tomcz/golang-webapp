@@ -74,9 +74,6 @@ func main() {
 func realMain(log *slog.Logger) error {
 	withTLS := *tlsCertFile != "" && *tlsKeyFile != ""
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
 	store, err := createSessionStore()
 	if err != nil {
 		return err
@@ -93,6 +90,9 @@ func realMain(log *slog.Logger) error {
 		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
 		// to prevent connections from taking resources indefinitely.
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	go func() {
 		<-ctx.Done()
