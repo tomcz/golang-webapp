@@ -1,6 +1,8 @@
 package cookie
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,7 +12,7 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp/sessions"
 )
 
-func TestRoundTrip(t *testing.T) {
+func TestRoundTrip_uncompressed(t *testing.T) {
 	cipher, err := subtle.NewAESGCMSIV(sessions.NewKeyBytes())
 	assert.NilError(t, err)
 
@@ -24,6 +26,34 @@ func TestRoundTrip(t *testing.T) {
 
 	encoded, err := store.Write("", data, time.Hour)
 	assert.NilError(t, err)
+	assert.Assert(t, strings.HasPrefix(encoded, uncompressedPrefix))
+
+	now = now.Add(time.Minute)
+
+	decoded, err := store.Read(encoded)
+	assert.NilError(t, err)
+
+	assert.DeepEqual(t, data, decoded)
+}
+
+func TestRoundTrip_compressed(t *testing.T) {
+	cipher, err := subtle.NewAESGCMSIV(sessions.NewKeyBytes())
+	assert.NilError(t, err)
+
+	now := time.Now()
+	store := &cookieStore{
+		cipher:  cipher,
+		timeNow: func() time.Time { return now },
+	}
+
+	data := map[string]any{}
+	for i := 0; i < 1024; i++ {
+		data[strconv.Itoa(i)] = i
+	}
+
+	encoded, err := store.Write("", data, time.Hour)
+	assert.NilError(t, err)
+	assert.Assert(t, strings.HasPrefix(encoded, compressedPrefix))
 
 	now = now.Add(time.Minute)
 
