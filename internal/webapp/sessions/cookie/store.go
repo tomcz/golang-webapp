@@ -161,12 +161,6 @@ func (s *cookieStore) decryptAndUncompress(value string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	if err = r.Close(); err != nil {
-		return nil, err
-	}
-	return buf, nil
+	defer r.Close()
+	return io.ReadAll(r)
 }
