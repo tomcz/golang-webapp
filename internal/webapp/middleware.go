@@ -2,7 +2,6 @@ package webapp
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -46,16 +45,13 @@ func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		reqID := shortRandomText()
-		log := slog.With("component", "web", "req_id", reqID)
-		fields := newMetadataFields(reqID, log)
-
+		fields := newMetadataFields()
 		fields.Set("req_start_at", start)
 		fields.Set("req_host", r.Host)
 		fields.Set("req_method", r.Method)
 		fields.Set("req_path", r.URL.Path)
 		fields.Set("req_user_agent", r.UserAgent())
-		fields.Set("req_remote_addr", r.RemoteAddr)
+		fields.Set("req_remote_addr", RemoteAddr(r))
 		if referer := r.Referer(); referer != "" {
 			fields.Set("req_referer", referer)
 		}
@@ -76,9 +72,9 @@ func requestLogger(next http.Handler) http.Handler {
 
 		args := fields.Slice()
 		if fields.isDebug {
-			log.Debug("request finished", args...)
+			fields.logger.Debug("request finished", args...)
 		} else {
-			log.Info("request finished", args...)
+			fields.logger.Info("request finished", args...)
 		}
 	})
 }

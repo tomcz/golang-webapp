@@ -37,11 +37,12 @@ func (m *metadataFields) Slice() []any {
 	return args
 }
 
-func newMetadataFields(requestID string, log *slog.Logger) *metadataFields {
+func newMetadataFields() *metadataFields {
+	reqID := shortRandomText()
 	return &metadataFields{
 		fields:    make(map[string]any),
-		logger:    log,
-		requestID: requestID,
+		logger:    slog.With("component", "web", "req_id", reqID),
+		requestID: reqID,
 	}
 }
 
@@ -80,4 +81,9 @@ func RDebug(r *http.Request) {
 	if md, ok := currentMetadataFields(r); ok {
 		md.isDebug = true
 	}
+}
+
+func RemoteAddr(r *http.Request) string {
+	// TODO: add more places to lookup remote address if sitting behind proxies (e.g. X-Forwarded-For)
+	return r.RemoteAddr
 }

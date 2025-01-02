@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -24,10 +25,10 @@ const (
 )
 
 const (
-	FlashMessageKey = "FlashMessage"
-	FlashSuccessKey = "FlashSuccess"
-	FlashWarningKey = "FlashWarning"
-	FlashErrorKey   = "FlashError"
+	FlashMessageData = "FlashMessage"
+	FlashSuccessData = "FlashSuccess"
+	FlashWarningData = "FlashWarning"
+	FlashErrorData   = "FlashError"
 )
 
 const (
@@ -37,7 +38,18 @@ const (
 	sessionFlashSuccess = "_Flash_Success_"
 	sessionFlashWarning = "_Flash_Warning_"
 	sessionFlashError   = "_Flash_Error_"
+	sessionRemoteAddr   = "_Remote_Addr_"
 )
+
+// these cannot be modified via the Session interface
+var internalSessionKeys = map[string]bool{
+	sessionCsrfToken:    true,
+	sessionFlashMessage: true,
+	sessionFlashSuccess: true,
+	sessionFlashWarning: true,
+	sessionFlashError:   true,
+	sessionRemoteAddr:   true,
+}
 
 type SessionWrapper interface {
 	Wrap(next http.HandlerFunc) http.HandlerFunc
@@ -87,17 +99,30 @@ func NewSessionWrapper(sessionName string, store SessionStore, csrf CsrfProtecti
 
 func (s *sessionWrapper) Wrap(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := s.loadSession(r)
-		if err != nil {
-			RLog(r).Debug("load session failed", "error", err)
-			data = make(map[string]any)
-		}
-		session := &currentSession{session: data, wrapper: s}
+		session := &currentSession{session: s.loadSession(r), wrapper: s}
 		r = r.WithContext(context.WithValue(r.Context(), currentSessionKey, session))
 		if s.isCsrfSafe(w, r, session) {
 			next(w, r)
 		}
 	}
+}
+
+func (s *sessionWrapper) loadSession(r *http.Request) map[string]any {
+	data, err := s.store.Read(s.cookieValue(r))
+	remoteAddr := RemoteAddr(r)
+	if err != nil {
+		RLog(r).Debug("load session failed", "error", err)
+		return map[string]any{sessionRemoteAddr: remoteAddr}
+	}
+	if value, found := data[sessionRemoteAddr]; found {
+		if addr, ok := value.(string); ok {
+			if addr == remoteAddr {
+				return data
+			}
+		}
+	}
+	RLog(r).Warn("remote session address mismatch", "session", data[sessionRemoteAddr], "request", remoteAddr)
+	return map[string]any{sessionRemoteAddr: remoteAddr}
 }
 
 func (s *sessionWrapper) cookieValue(r *http.Request) string {
@@ -106,10 +131,6 @@ func (s *sessionWrapper) cookieValue(r *http.Request) string {
 		return "" // no cookie
 	}
 	return cookie.Value
-}
-
-func (s *sessionWrapper) loadSession(r *http.Request) (map[string]any, error) {
-	return s.store.Read(s.cookieValue(r))
 }
 
 func (s *sessionWrapper) saveSession(w http.ResponseWriter, r *http.Request, session map[string]any) error {
@@ -165,12 +186,12 @@ func (s *sessionWrapper) isCsrfSafe(w http.ResponseWriter, r *http.Request, cs *
 	if requestToken == "" {
 		return notCsrfSafe(w, r, errors.New("no csrf token in request"))
 	}
-	sessionToken := cs.GetString(sessionCsrfToken)
+	sessionToken := cs.getCsrfToken()
 	if sessionToken == "" {
 		return notCsrfSafe(w, r, errors.New("no csrf token in session"))
 	}
 	if s.csrf == CsrfPerRequest {
-		cs.Delete(sessionCsrfToken)
+		cs.deleteCsrfToken()
 	}
 	if subtle.ConstantTimeCompare([]byte(requestToken), []byte(sessionToken)) != 0 {
 		return true
@@ -210,20 +231,20 @@ func getSessionData(r *http.Request) map[string]any {
 	if s == nil {
 		return data
 	}
-	data[FlashMessageKey] = s.popFlash(sessionFlashMessage)
-	data[FlashSuccessKey] = s.popFlash(sessionFlashSuccess)
-	data[FlashWarningKey] = s.popFlash(sessionFlashWarning)
-	data[FlashErrorKey] = s.popFlash(sessionFlashError)
+	data[FlashMessageData] = s.popFlash(sessionFlashMessage)
+	data[FlashSuccessData] = s.popFlash(sessionFlashSuccess)
+	data[FlashWarningData] = s.popFlash(sessionFlashWarning)
+	data[FlashErrorData] = s.popFlash(sessionFlashError)
 	if s.wrapper.csrf == CsrfDisabled {
 		return data
 	}
 	var csrfToken string
 	if s.wrapper.csrf == CsrfPerSession {
-		csrfToken = s.GetString(sessionCsrfToken)
+		csrfToken = s.getCsrfToken()
 	}
 	if csrfToken == "" {
 		csrfToken = longRandomText()
-		s.Set(sessionCsrfToken, csrfToken)
+		s.setCsrfToken(csrfToken)
 	}
 	data[CsrfTokenKey] = csrfToken
 	return data
@@ -243,7 +264,17 @@ func saveSession(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (c *currentSession) Set(key string, value any) {
+	if internalSessionKeys[key] {
+		panic(fmt.Sprintf("cannot override internal session key %q", key))
+	}
 	c.session[key] = value
+}
+
+func (c *currentSession) Delete(key string) {
+	if internalSessionKeys[key] {
+		panic(fmt.Sprintf("cannot delete internal session key %q", key))
+	}
+	delete(c.session, key)
 }
 
 func (c *currentSession) Get(key string) (any, bool) {
@@ -258,6 +289,15 @@ func (c *currentSession) GetString(key string) string {
 		}
 	}
 	return ""
+}
+
+func (c *currentSession) getFlash(key string) []string {
+	if value, found := c.Get(key); found {
+		if flash, ok := value.([]string); ok {
+			return flash
+		}
+	}
+	return nil
 }
 
 func (c *currentSession) AddFlashMessage(msg string) {
@@ -277,26 +317,25 @@ func (c *currentSession) AddFlashError(msg string) {
 }
 
 func (c *currentSession) addFlash(key, msg string) {
-	c.Set(key, append(c.getFlash(key), msg))
-}
-
-func (c *currentSession) getFlash(key string) []string {
-	if value, found := c.Get(key); found {
-		if flash, ok := value.([]string); ok {
-			return flash
-		}
-	}
-	return nil
+	c.session[key] = append(c.getFlash(key), msg)
 }
 
 func (c *currentSession) popFlash(key string) []string {
 	flash := c.getFlash(key)
-	c.Delete(key)
+	delete(c.session, key)
 	return flash
 }
 
-func (c *currentSession) Delete(key string) {
-	delete(c.session, key)
+func (c *currentSession) setCsrfToken(token string) {
+	c.session[sessionCsrfToken] = token
+}
+
+func (c *currentSession) getCsrfToken() string {
+	return c.GetString(sessionCsrfToken)
+}
+
+func (c *currentSession) deleteCsrfToken() {
+	delete(c.session, sessionCsrfToken)
 }
 
 func (c *currentSession) Clear() {
