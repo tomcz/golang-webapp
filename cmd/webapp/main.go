@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -95,24 +94,20 @@ func realMain(log *slog.Logger) error {
 	defer stop()
 
 	go func() {
-		<-ctx.Done()
-		log.Info("shutdown received")
-		_ = server.Shutdown(context.Background())
+		ll := log.With("addr", *listenAddr, "sessions", *sessionStore)
+		if withTLS {
+			ll.Info("starting server with TLS")
+			server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
+			server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
+		} else {
+			ll.Info("starting server without TLS")
+			server.ListenAndServe()
+		}
 	}()
 
-	ll := log.With("addr", *listenAddr, "sessions", *sessionStore)
-	if withTLS {
-		ll.Info("starting server with TLS")
-		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
-		err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
-	} else {
-		ll.Info("starting server without TLS")
-		err = server.ListenAndServe()
-	}
-	if errors.Is(err, http.ErrServerClosed) {
-		return nil
-	}
-	return err
+	<-ctx.Done()
+	log.Info("shutdown received")
+	return server.Shutdown(context.Background())
 }
 
 func createSessionStore() (webapp.SessionStore, error) {
