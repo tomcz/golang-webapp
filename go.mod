@@ -9,6 +9,7 @@ require (
 	github.com/tink-crypto/tink-go/v2 v2.2.0
 	github.com/unrolled/secure v1.17.0
 	github.com/urfave/negroni v1.0.0
+	golang.org/x/sync v0.10.0
 	gotest.tools/v3 v3.5.1
 )
 

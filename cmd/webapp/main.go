@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/internal/webapp"
 	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
@@ -94,25 +96,30 @@ func realMain(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	go func() {
+	group, ctx := errgroup.WithContext(ctx)
+	group.Go(func() (err error) {
+		ll := log.With("addr", *listenAddr, "sessions", *sessionStore)
+		if withTLS {
+			ll.Info("starting server with TLS")
+			server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
+			err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
+		} else {
+			ll.Info("starting server without TLS")
+			err = server.ListenAndServe()
+		}
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	})
+	group.Go(func() error {
 		<-ctx.Done()
-		log.Info("shutdown received")
-		_ = server.Shutdown(context.Background())
-	}()
-
-	ll := log.With("addr", *listenAddr, "sessions", *sessionStore)
-	if withTLS {
-		ll.Info("starting server with TLS")
-		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
-		err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
-	} else {
-		ll.Info("starting server without TLS")
-		err = server.ListenAndServe()
-	}
-	if errors.Is(err, http.ErrServerClosed) {
-		return nil
-	}
-	return err
+		log.Info("stopping server")
+		timeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+		return server.Shutdown(timeout)
+	})
+	return group.Wait()
 }
 
 func createSessionStore() (webapp.SessionStore, error) {
