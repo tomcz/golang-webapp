@@ -97,20 +97,15 @@ func realMain(log *slog.Logger) error {
 	defer stop()
 
 	group, ctx := errgroup.WithContext(ctx)
-	group.Go(func() (err error) {
+	group.Go(func() error {
 		ll := log.With("addr", *listenAddr, "sessions", *sessionStore)
 		if withTLS {
 			ll.Info("starting server with TLS")
 			server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
-			err = server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
-		} else {
-			ll.Info("starting server without TLS")
-			err = server.ListenAndServe()
+			return server.ListenAndServeTLS(*tlsCertFile, *tlsKeyFile)
 		}
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
+		ll.Info("starting server without TLS")
+		return server.ListenAndServe()
 	})
 	group.Go(func() error {
 		<-ctx.Done()
@@ -119,7 +114,11 @@ func realMain(log *slog.Logger) error {
 		defer cancel()
 		return server.Shutdown(timeout)
 	})
-	return group.Wait()
+	err = group.Wait()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }
 
 func createSessionStore() (webapp.SessionStore, error) {
