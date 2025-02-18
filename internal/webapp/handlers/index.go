@@ -16,7 +16,19 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		session.AddFlashSuccess("example flash success message")
 		session.Set("examples_shown", "yes")
 	}
-	webapp.Render(w, r, "index.gohtml", authData(r))
+	data := authData(r)
+	var opts []webapp.RenderOpt
+	if name := session.GetString("Name"); name != "" {
+		session.Delete("Name")
+		data["Name"] = name
+		if isPartial(r) {
+			opts = append(opts,
+				webapp.RenderWithTemplateName("hello"),
+				webapp.RenderWithoutLayoutFile(),
+			)
+		}
+	}
+	webapp.Render(w, r, "index.gohtml", data, opts...)
 }
 
 func updateIndex(w http.ResponseWriter, r *http.Request) {
@@ -24,14 +36,6 @@ func updateIndex(w http.ResponseWriter, r *http.Request) {
 	if nameParam == "" {
 		nameParam = "World"
 	}
-	var opts []webapp.RenderOpt
-	if isPartial(r) {
-		opts = append(opts,
-			webapp.RenderWithTemplateName("body"),
-			webapp.RenderWithoutLayoutFile(),
-		)
-	}
-	data := authData(r)
-	data["Name"] = nameParam
-	webapp.Render(w, r, "hello.gohtml", data, opts...)
+	webapp.CurrentSession(r).Set("Name", nameParam)
+	webapp.RedirectToUrl(w, r, "/index")
 }

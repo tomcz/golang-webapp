@@ -15,7 +15,12 @@
           </div>
         </fieldset>
       </form>
-      <div id="hello-form-target" class="my-2"></div>
+      <div id="hello-form-target" class="my-2">{{ if .Name }}{{ template "hello" . }}{{ end }}</div>
     </div>
+  </div>
+{{ end }}
+{{ define "hello" }}
+  <div class="toast" role="alert">
+    Hello {{ .Name }}
   </div>
 {{ end }}
