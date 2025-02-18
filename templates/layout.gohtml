@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/static/{{ .Commit }}/lib/spectre-exp.min.css">
   <link rel="stylesheet" href="/static/{{ .Commit }}/lib/spectre-icons.min.css">
   <script src="/static/{{ .Commit }}/toasts.js" defer></script>
-  {{- template "head" .}}
+  {{- template "head" . }}
 </head>
 <body>
 <div class="container grid-lg">
@@ -43,7 +43,7 @@
     <a href="/logout">Sign out ({{ .AuthUser }})</a>
   </div>
 {{- end }}
-{{ template "body" .}}
+{{ template "body" . }}
 </div>
 </body>
 </html>
