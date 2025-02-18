@@ -33,7 +33,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 
 func updateIndex(w http.ResponseWriter, r *http.Request) {
 	nameParam := strings.TrimSpace(r.PostFormValue("name"))
-	if nameParam == "" {
+	if nameParam != "" {
 		webapp.CurrentSession(r).Set("Name", nameParam)
 	}
 	redirectToIndex(w, r)
