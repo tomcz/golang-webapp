@@ -38,7 +38,6 @@ const (
 	sessionFlashSuccess = "_Flash_Success_"
 	sessionFlashWarning = "_Flash_Warning_"
 	sessionFlashError   = "_Flash_Error_"
-	sessionRemoteAddr   = "_Remote_Addr_"
 )
 
 // these cannot be modified via the Session interface
@@ -48,7 +47,6 @@ var internalSessionKeys = map[string]bool{
 	sessionFlashSuccess: true,
 	sessionFlashWarning: true,
 	sessionFlashError:   true,
-	sessionRemoteAddr:   true,
 }
 
 type SessionWrapper interface {
@@ -99,7 +97,7 @@ func NewSessionWrapper(sessionName string, store SessionStore, csrf CsrfProtecti
 
 func (s *sessionWrapper) Wrap(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session := &currentSession{session: s.loadSession(r), wrapper: s}
+		session := &currentSession{session: s.loadSessionData(r), wrapper: s}
 		r = r.WithContext(context.WithValue(r.Context(), currentSessionKey, session))
 		if s.isCsrfSafe(w, r, session) {
 			next(w, r)
@@ -107,22 +105,13 @@ func (s *sessionWrapper) Wrap(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (s *sessionWrapper) loadSession(r *http.Request) map[string]any {
+func (s *sessionWrapper) loadSessionData(r *http.Request) map[string]any {
 	data, err := s.store.Read(s.cookieValue(r))
-	remoteAddr := RemoteAddr(r)
 	if err != nil {
 		RLog(r).Debug("load session failed", "error", err)
-		return map[string]any{sessionRemoteAddr: remoteAddr}
+		data = map[string]any{}
 	}
-	if value, found := data[sessionRemoteAddr]; found {
-		if addr, ok := value.(string); ok {
-			if addr == remoteAddr {
-				return data
-			}
-		}
-	}
-	RLog(r).Warn("remote session address mismatch", "session", data[sessionRemoteAddr], "request", remoteAddr)
-	return map[string]any{sessionRemoteAddr: remoteAddr}
+	return data
 }
 
 func (s *sessionWrapper) cookieValue(r *http.Request) string {
