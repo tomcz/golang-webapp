@@ -82,7 +82,7 @@ func realMain(log *slog.Logger) error {
 	}
 	defer store.Close()
 
-	session := webapp.NewSessionWrapper(*sessionName, store, webapp.CsrfPerSession)
+	session := webapp.NewSessionWrapper(*sessionName, store)
 	handler := webapp.WithMiddleware(handlers.NewHandler(session, parseKnownUsers()), withTLS)
 
 	server := &http.Server{
