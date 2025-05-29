@@ -16,12 +16,8 @@ const (
 	afterLoginKey = "AfterLogin"
 )
 
-func public(sw webapp.SessionWrapper, next http.HandlerFunc) http.HandlerFunc {
-	return sw.Wrap(next)
-}
-
-func private(sw webapp.SessionWrapper, next http.HandlerFunc) http.HandlerFunc {
-	return sw.Wrap(func(w http.ResponseWriter, r *http.Request) {
+func private(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		s := webapp.CurrentSession(r)
 		if user := s.GetString(authUserKey); user != "" {
 			webapp.RSet(r, "auth_user", user)
@@ -46,7 +42,7 @@ func private(sw webapp.SessionWrapper, next http.HandlerFunc) http.HandlerFunc {
 		}
 		s.Set(afterLoginKey, path)
 		redirectToLogin(w, r)
-	})
+	}
 }
 
 func authData(r *http.Request) map[string]any {

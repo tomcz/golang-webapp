@@ -136,7 +136,7 @@ func readTemplate(path string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s open failed: %w", path, err)
 	}
-	defer in.Close()
+	defer in.Close() //nolint
 
 	buf, err := io.ReadAll(in)
 	if err != nil {

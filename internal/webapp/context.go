@@ -2,12 +2,11 @@ package webapp
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"log/slog"
 	"net/http"
 	"slices"
-
-	"github.com/tink-crypto/tink-go/v2/subtle/random"
 )
 
 type contextKey string
@@ -41,7 +40,9 @@ func (m *metadataFields) Slice() []any {
 }
 
 func newMetadataFields() *metadataFields {
-	reqID := hex.EncodeToString(random.GetRandomBytes(8))
+	buf := make([]byte, 8)
+	_, _ = rand.Read(buf)
+	reqID := hex.EncodeToString(buf)
 	return &metadataFields{
 		fields:    make(map[string]any),
 		logger:    slog.With("component", "web", "req_id", reqID),

@@ -49,7 +49,3 @@ run: build-prod
 .PHONY: keygen
 keygen: build-dev
 	./target/webapp -keygen
-
-.PHONY: memcached
-memcached:
-	docker run --rm -p 127.0.0.1:11211:11211 -it memcached:1.6

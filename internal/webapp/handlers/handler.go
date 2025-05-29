@@ -6,23 +6,20 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp"
 )
 
-func NewHandler(sw webapp.SessionWrapper, knownUsers map[string]string) http.Handler {
+func NewHandler(knownUsers map[string]string) http.Handler {
 	r := webapp.NewRouter()
-
-	// no session
 	r.Handle("/{$}", "index", http.RedirectHandler("/index", http.StatusFound))
+
 	r.HandleFunc("/error", "exampleError", exampleError)
 	r.HandleFunc("/panic", "examplePanic", examplePanic)
 	r.HandleFunc("/ping", "examplePing", examplePing)
 
-	// unauthenticated, with session
-	r.HandleFunc("GET /login", "showLogin", public(sw, showLogin))
-	r.HandleFunc("POST /login", "handleLogin", public(sw, handleLogin(knownUsers)))
-	r.HandleFunc("/logout", "handleLogout", public(sw, handleLogout))
+	r.HandleFunc("GET /login", "showLogin", showLogin)
+	r.HandleFunc("POST /login", "handleLogin", handleLogin(knownUsers))
+	r.HandleFunc("/logout", "handleLogout", handleLogout)
 
-	// authenticated, session required
-	r.HandleFunc("GET /index", "showIndex", private(sw, showIndex))
-	r.HandleFunc("POST /index", "updateIndex", private(sw, updateIndex))
+	r.HandleFunc("GET /index", "showIndex", private(showIndex))
+	r.HandleFunc("POST /index", "updateIndex", private(updateIndex))
 
 	return r.Handler()
 }

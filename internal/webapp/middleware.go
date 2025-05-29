@@ -1,28 +1,20 @@
 package webapp
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"runtime/debug"
 	"time"
 
+	"github.com/gorilla/sessions"
 	"github.com/streadway/handy/breaker"
-	"github.com/unrolled/secure"
 	"github.com/urfave/negroni"
 )
 
-func WithMiddleware(h http.Handler, withTLS bool) http.Handler {
-	sm := secure.New(secure.Options{
-		BrowserXssFilter:     true,
-		FrameDeny:            true,
-		ContentTypeNosniff:   true,
-		ReferrerPolicy:       "no-referrer",
-		SSLRedirect:          false,
-		SSLTemporaryRedirect: false,
-		IsDevelopment:        !withTLS, // don't enable production settings without TLS
-	})
-	h = sm.Handler(h)
-	h = panicRecovery(h)
+func WithMiddleware(store sessions.Store, sessionName string, h http.Handler) http.Handler {
+	h = panicRecovery(securityHeaders(csrfProtection(sessionMiddleware(store, sessionName, h))))
 	h = breaker.Handler(breaker.NewBreaker(0.1), breaker.DefaultStatusCodeValidator, h)
 	return requestLogger(h)
 }
@@ -77,4 +69,64 @@ func requestLogger(next http.Handler) http.Handler {
 			fields.logger.Info("request finished", args...)
 		}
 	})
+}
+
+// Ref: https://blog.appcanary.com/2017/http-security-headers.html
+// Use github.com/unrolled/secure when CSP, HSTS, or HPKP is needed.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := w.Header()
+		header.Set("X-XSS-Protection", "1; mode=block")
+		header.Set("X-Frame-Options", "DENY")
+		header.Set("X-Content-Type-Options", "nosniff")
+		header.Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func csrfProtection(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := csrfCheck(r); err != nil {
+			HttpError(w, r, http.StatusBadRequest, "CSRF validation failed", err)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+var csrfSafeMethods = map[string]bool{
+	http.MethodGet:     true,
+	http.MethodHead:    true,
+	http.MethodOptions: true,
+}
+
+var csrfSafeFetches = map[string]bool{
+	"same-origin": true,
+	"none":        true,
+}
+
+// adapted from https://github.com/golang/go/issues/73626
+func csrfCheck(r *http.Request) error {
+	if csrfSafeMethods[r.Method] {
+		return nil
+	}
+	secFetchSite := r.Header.Get("Sec-Fetch-Site")
+	if csrfSafeFetches[secFetchSite] {
+		return nil
+	}
+	origin := r.Header.Get("Origin")
+	if secFetchSite == "" {
+		if origin == "" {
+			// we could also fail open here and allow requests from curl, etc.
+			return errors.New("not a browser request")
+		}
+		parsed, err := url.Parse(origin)
+		if err != nil {
+			return fmt.Errorf("bad origin: %w", err)
+		}
+		if parsed.Host == r.Host {
+			return nil
+		}
+	}
+	return fmt.Errorf("Sec-Fetch-Site %q, Origin %q, Host %q", secFetchSite, origin, r.Host)
 }

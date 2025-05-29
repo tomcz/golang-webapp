@@ -9,8 +9,8 @@ import (
 )
 
 func examplePing(w http.ResponseWriter, r *http.Request) {
-	webapp.RDebug(r) // don't log these requests
-	fmt.Fprintln(w, "Pong")
+	webapp.RDebug(r)        //nolog
+	fmt.Fprintln(w, "Pong") //nolint
 }
 
 func exampleError(w http.ResponseWriter, r *http.Request) {
