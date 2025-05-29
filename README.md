@@ -4,7 +4,6 @@ This project provides a basic web application [skeleton](https://wiki.c2.com/?Wa
 
 Features:
 
-* Cookie-based, server memory-based, or memcached-based HTTP sessions.
 * Static assets served directly from the webapp.
 * Server-side-rendered HTML templates, with buffered template rendering to prevent output of incomplete or malformed content in the event of template evaluation errors.
 * Two build modes:
