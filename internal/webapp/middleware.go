@@ -54,7 +54,9 @@ func requestLogger(next http.Handler) http.Handler {
 		next.ServeHTTP(ww, rr)
 
 		duration := time.Since(start)
-		fields.Set("res_status", ww.Status())
+		status := ww.Status()
+
+		fields.Set("res_status", status)
 		fields.Set("res_duration_ms", duration.Milliseconds())
 		fields.Set("res_duration_ns", duration.Nanoseconds())
 		fields.Set("res_size", ww.Size())
@@ -65,7 +67,9 @@ func requestLogger(next http.Handler) http.Handler {
 		args := fields.Slice()
 		if fields.isDebug {
 			fields.logger.Debug("request finished", args...)
-		} else if ww.Status() >= 500 {
+		} else if status >= 500 {
+			fields.logger.Error("request finished", args...)
+		} else if status >= 400 && status != 404 {
 			fields.logger.Warn("request finished", args...)
 		} else {
 			fields.logger.Info("request finished", args...)
