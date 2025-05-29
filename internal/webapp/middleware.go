@@ -65,6 +65,8 @@ func requestLogger(next http.Handler) http.Handler {
 		args := fields.Slice()
 		if fields.isDebug {
 			fields.logger.Debug("request finished", args...)
+		} else if ww.Status() >= 500 {
+			fields.logger.Warn("request finished", args...)
 		} else {
 			fields.logger.Info("request finished", args...)
 		}
