@@ -54,7 +54,7 @@ func main() {
 }
 
 func (a appCfg) run(log *slog.Logger) error {
-	store := sessions.NewCookieStore(parseKeyBytes(a.SessionAuthKey), parseKeyBytes(a.SessionEncKey))
+	store := sessions.NewCookieStore(sessionKey(a.SessionAuthKey), sessionKey(a.SessionEncKey))
 	handler := handlers.NewHandler(a.parseKnownUsers())
 	handler = webapp.WithMiddleware(store, a.SessionName, handler)
 
@@ -138,7 +138,7 @@ func (a appCfg) setupLogging() *slog.Logger {
 	return slog.With("component", "main")
 }
 
-func parseKeyBytes(key string) []byte {
+func sessionKey(key string) []byte {
 	if key != "" {
 		buf := sha256.Sum256([]byte(key))
 		return buf[:]
