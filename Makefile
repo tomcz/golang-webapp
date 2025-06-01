@@ -47,5 +47,10 @@ run: build-prod
 	./target/webapp
 
 .PHONY: keygen
-keygen: build-dev
-	./target/webapp -keygen
+keygen:
+ifeq ($(shell which pwgen),)
+	$(error "Please install pwgen (e.g. brew install pwgen)")
+else
+	@echo "SESSION_AUTH_KEY='$(shell pwgen 64 1)'"
+	@echo "SESSION_ENC_KEY='$(shell pwgen 64 1)'"
+endif

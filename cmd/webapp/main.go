@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -33,19 +33,12 @@ type appCfg struct {
 	SessionName    string `name:"session" env:"SESSION_NAME" default:"_app_session" help:"Name of session cookie."`
 	SessionAuthKey string `name:"auth-key" env:"SESSION_AUTH_KEY" help:"Session authentication key."`
 	SessionEncKey  string `name:"enc-key" env:"SESSION_ENC_KEY" help:"Session encryption key."`
-	Keygen         bool   `name:"keygen" help:"Print out a new SESSION_AUTH_KEY & SESSION_ENC_KEY and exit."`
 	Version        bool   `name:"version" help:"Show build version and exit."`
 }
 
 func main() {
 	var app appCfg
 	kong.Parse(&app, kong.Description("Example golang webapp."))
-
-	if app.Keygen {
-		fmt.Printf("SESSION_AUTH_KEY=%q\n", hex.EncodeToString(randomKeyBytes()))
-		fmt.Printf("SESSION_ENC_KEY=%q\n", hex.EncodeToString(randomKeyBytes()))
-		os.Exit(0)
-	}
 
 	if app.Version {
 		fmt.Println(build.Version())
@@ -147,15 +140,9 @@ func (a appCfg) setupLogging() *slog.Logger {
 
 func parseKeyBytes(key string) []byte {
 	if key != "" {
-		buf, err := hex.DecodeString(key)
-		if err == nil && len(buf) == 32 {
-			return buf
-		}
+		buf := sha256.Sum256([]byte(key))
+		return buf[:]
 	}
-	return randomKeyBytes()
-}
-
-func randomKeyBytes() []byte {
 	buf := make([]byte, 32)
 	_, _ = rand.Read(buf)
 	return buf
