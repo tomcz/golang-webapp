@@ -54,7 +54,14 @@ func main() {
 }
 
 func (a appCfg) run(log *slog.Logger) error {
+	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
+
 	store := sessions.NewCookieStore(sessionKey(a.SessionAuthKey), sessionKey(a.SessionEncKey))
+	store.Options.MaxAge = int(time.Hour.Seconds())
+	store.Options.HttpOnly = true
+	store.Options.Secure = useTLS
+	store.Options.Path = "/"
+
 	handler := handlers.NewHandler(a.parseKnownUsers())
 	handler = webapp.WithMiddleware(store, a.SessionName, handler)
 
@@ -72,7 +79,7 @@ func (a appCfg) run(log *slog.Logger) error {
 	group, ctx := errgroup.WithContext(ctx)
 	group.Go(func() error {
 		ll := log.With("addr", a.ListenAddr)
-		if a.TlsCertFile != "" && a.TlsKeyFile != "" {
+		if useTLS {
 			ll.Info("starting server with TLS")
 			server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 			return server.ListenAndServeTLS(a.TlsCertFile, a.TlsKeyFile)
