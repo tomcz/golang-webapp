@@ -12,7 +12,7 @@
   {{- template "head" . }}
 </head>
 <body>
-<div class="container grid-lg">
+<div class="container grid-lg" hx-on::send-error="window.location.reload()">
 {{- range .FlashError }}
   <div class="toast toast-error mt-1" role="alert">
     {{ template "hide-toast" }}
