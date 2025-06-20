@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"crypto/subtle"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -25,9 +24,8 @@ func private(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if isPartial(r) {
-			err := errors.New("no user in session")
-			msg := "Unauthorised, please reload page to sign in."
-			webapp.HttpError(w, r, http.StatusUnauthorized, msg, err)
+			w.Header().Set("HX-Redirect", "/login")
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		path := r.URL.Path

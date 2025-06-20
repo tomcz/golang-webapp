@@ -6,35 +6,34 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>golang-webapp</title>
-  <link rel="stylesheet" href="/static/{{ .Commit }}/lib/spectre.min.css">
-  <link rel="stylesheet" href="/static/{{ .Commit }}/lib/spectre-exp.min.css">
-  <link rel="stylesheet" href="/static/{{ .Commit }}/lib/spectre-icons.min.css">
-  <script src="/static/{{ .Commit }}/toasts.js" defer></script>
+  <meta name="htmx-config" content='{"responseHandling": [{"code":".*", "swap": true}]}'>
+  <link rel="stylesheet" href="/static/{{ .Commit }}/spectre.min.css">
+  <script src="/static/{{ .Commit }}/htmx.min.js"></script>
   {{- template "head" . }}
 </head>
 <body>
 <div class="container grid-lg">
 {{- range .FlashError }}
   <div class="toast toast-error mt-1" role="alert">
-    <button class="btn btn-clear float-right"></button>
+    {{ template "hide-toast" }}
     {{ . }}
   </div>
 {{- end }}
 {{- range .FlashWarning }}
   <div class="toast toast-warning mt-1" role="alert">
-    <button class="btn btn-clear float-right"></button>
+    {{ template "hide-toast" }}
     {{ . }}
   </div>
 {{- end }}
 {{- range .FlashSuccess }}
   <div class="toast toast-success mt-1" role="alert">
-    <button class="btn btn-clear float-right"></button>
+    {{ template "hide-toast" }}
     {{ . }}
   </div>
 {{- end }}
 {{- range .FlashMessage }}
   <div class="toast toast-primary mt-1" role="alert">
-    <button class="btn btn-clear float-right"></button>
+    {{ template "hide-toast" }}
     {{ . }}
   </div>
 {{- end }}
@@ -47,6 +46,9 @@
 </div>
 </body>
 </html>
+{{- end }}
+{{- define "hide-toast" }}
+<button class="btn btn-clear float-right" hx-on:click="this.closest('div.toast').classList.add('d-hide')"></button>
 {{- end }}
 {{- define "head" }}{{ end }}
 {{- define "body" }}{{ end }}

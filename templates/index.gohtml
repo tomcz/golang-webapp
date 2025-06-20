@@ -1,11 +1,11 @@
-{{- define "head" }}
-  <script src="/static/{{ .Commit }}/lib/htmx.min.js"></script>
-  <script src="/static/{{ .Commit }}/events.js" defer></script>
-{{- end }}
 {{ define "body" }}
   <div class="columns">
     <div class="column col-6 col-mx-auto">
-      <form id="hello-form" action="/index" method="post" hx-post="/index" hx-target="#hello-form-target">
+      <form method="post"
+            action="/index"
+            hx-post="/index"
+            hx-target="#hello-form-target"
+            hx-disabled-elt="find fieldset">
         <fieldset>
           <div class="input-group">
             <label class="input-group-addon" for="name">Say hello to</label>

@@ -8,7 +8,7 @@ import (
 )
 
 //go:embed *.js
-//go:embed lib/*
+//go:embed *.css
 var content embed.FS
 
 // FS provides a filesystem of static assets

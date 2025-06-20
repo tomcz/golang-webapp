@@ -4,6 +4,15 @@ LDFLAGS := -s -w -X github.com/tomcz/golang-webapp/build.commit=${GITCOMMIT}
 .PHONY: all
 all: clean format lint test build-prod
 
+.PHONY: keygen
+keygen:
+ifeq ($(shell which pwgen),)
+	$(error "Please install pwgen (e.g. brew install pwgen)")
+else
+	@echo "SESSION_AUTH_KEY='$(shell pwgen 64 1)'"
+	@echo "SESSION_ENC_KEY='$(shell pwgen 64 1)'"
+endif
+
 .PHONY: clean
 clean:
 	rm -rf target
@@ -14,9 +23,6 @@ target:
 .PHONY: format
 format:
 	goimports -w -local github.com/tomcz/golang-webapp .
-ifneq ($(shell which npx),)
-	npx prettier --print-width 120 --write "static/*.(js|css)"
-endif
 
 .PHONY: lint
 lint:
@@ -45,12 +51,3 @@ dev: build-dev
 .PHONY: run
 run: build-prod
 	./target/webapp
-
-.PHONY: keygen
-keygen:
-ifeq ($(shell which pwgen),)
-	$(error "Please install pwgen (e.g. brew install pwgen)")
-else
-	@echo "SESSION_AUTH_KEY='$(shell pwgen 64 1)'"
-	@echo "SESSION_ENC_KEY='$(shell pwgen 64 1)'"
-endif
