@@ -24,16 +24,17 @@ import (
 )
 
 type appCfg struct {
-	KnownUsers     string `name:"known-users" env:"KNOWN_USERS" help:"Valid 'user:password,user2:password2,...' combinations."`
-	LogLevel       string `name:"log-level" env:"LOG_LEVEL" default:"info" help:"Logging level (debug, info, warn, error)."`
-	LogType        string `name:"log-type" env:"LOG_TYPE" default:"default" help:"Logger type (default, text, json)."`
-	ListenAddr     string `name:"listen-addr" env:"LISTEN_ADDR" default:":3000" help:"Service 'ip:port' listen address."`
-	TlsCertFile    string `name:"tls-cert" env:"TLS_CERT_FILE" type:"existingfile" help:"For HTTPS service, optional."`
-	TlsKeyFile     string `name:"tls-key" env:"TLS_KEY_FILE" type:"existingfile" help:"For HTTPS service, optional."`
-	SessionName    string `name:"session" env:"SESSION_NAME" default:"_app_session" help:"Name of session cookie."`
-	SessionAuthKey string `name:"auth-key" env:"SESSION_AUTH_KEY" help:"Session authentication key."`
-	SessionEncKey  string `name:"enc-key" env:"SESSION_ENC_KEY" help:"Session encryption key."`
-	Version        bool   `name:"version" help:"Show build version and exit."`
+	KnownUsers     string        `name:"known-users" env:"KNOWN_USERS" help:"Valid 'user:password,user2:password2,...' combinations."`
+	LogLevel       string        `name:"log-level" env:"LOG_LEVEL" default:"info" help:"Logging level (debug, info, warn, error)."`
+	LogType        string        `name:"log-type" env:"LOG_TYPE" default:"default" help:"Logger type (default, text, json)."`
+	ListenAddr     string        `name:"listen-addr" env:"LISTEN_ADDR" default:":3000" help:"Service 'ip:port' listen address."`
+	TlsCertFile    string        `name:"tls-cert" env:"TLS_CERT_FILE" type:"existingfile" help:"For HTTPS service, optional."`
+	TlsKeyFile     string        `name:"tls-key" env:"TLS_KEY_FILE" type:"existingfile" help:"For HTTPS service, optional."`
+	SessionName    string        `name:"session" env:"SESSION_NAME" default:"_app_session" help:"Name of session cookie."`
+	SessionMaxAge  time.Duration `name:"max-age" env:"SESSION_MAX_AGE" default:"1h" help:"MaxAge of session cookie"`
+	SessionAuthKey string        `name:"auth-key" env:"SESSION_AUTH_KEY" help:"Session authentication key."`
+	SessionEncKey  string        `name:"enc-key" env:"SESSION_ENC_KEY" help:"Session encryption key."`
+	Version        bool          `name:"version" help:"Show build version and exit."`
 }
 
 func main() {
@@ -56,14 +57,8 @@ func main() {
 func (a appCfg) run(log *slog.Logger) error {
 	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
 
-	store := sessions.NewCookieStore(sessionKey(a.SessionAuthKey), sessionKey(a.SessionEncKey))
-	store.Options.MaxAge = int(time.Hour.Seconds())
-	store.Options.HttpOnly = true
-	store.Options.Secure = useTLS
-	store.Options.Path = "/"
-
 	handler := handlers.NewHandler(a.parseKnownUsers())
-	handler = webapp.WithMiddleware(store, a.SessionName, handler)
+	handler = webapp.WithMiddleware(a.newSessionStore(useTLS), a.SessionName, handler)
 
 	server := &http.Server{
 		Addr:              a.ListenAddr,
@@ -143,6 +138,23 @@ func (a appCfg) setupLogging() *slog.Logger {
 		slog.SetDefault(slog.Default().With(logDefaults...))
 	}
 	return slog.With("component", "main")
+}
+
+func (a appCfg) newSessionStore(useTLS bool) sessions.Store {
+	store := sessions.NewCookieStore(sessionKey(a.SessionAuthKey), sessionKey(a.SessionEncKey))
+	maxAge := int(a.SessionMaxAge.Seconds())
+	store.Options.MaxAge = maxAge
+	store.Options.HttpOnly = true
+	store.Options.Path = "/"
+	if useTLS {
+		store.Options.Secure = true
+		store.Options.SameSite = http.SameSiteNoneMode
+	} else {
+		store.Options.Secure = false
+		store.Options.SameSite = http.SameSiteDefaultMode
+	}
+	store.MaxAge(maxAge)
+	return store
 }
 
 func sessionKey(key string) []byte {
