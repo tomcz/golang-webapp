@@ -1,4 +1,4 @@
-{{ define "body" }}
+{{- define "body" }}
   <div class="columns">
     <div class="column col-6 col-mx-auto">
       <form method="post"
@@ -17,9 +17,9 @@
       <div id="hello-form-target" class="my-2">{{ if .Name }}{{ template "hello" . }}{{ end }}</div>
     </div>
   </div>
-{{ end }}
-{{ define "hello" }}
+{{- end }}
+{{- define "hello" }}
   <div class="toast" role="alert">
     Hello {{ .Name }}
   </div>
-{{ end }}
+{{- end }}
