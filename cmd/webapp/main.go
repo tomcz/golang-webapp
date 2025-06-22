@@ -34,7 +34,7 @@ type appCfg struct {
 	SessionMaxAge  time.Duration `name:"max-age" env:"SESSION_MAX_AGE" default:"24h" help:"MaxAge of session cookie."`
 	SessionAuthKey string        `name:"auth-key" env:"SESSION_AUTH_KEY" help:"Session authentication key."`
 	SessionEncKey  string        `name:"enc-key" env:"SESSION_ENC_KEY" help:"Session encryption key."`
-	Version        bool          `name:"version" help:"Show build version and exit."`
+	Version        bool          `name:"version" short:"v" help:"Show build version and exit."`
 }
 
 func main() {
