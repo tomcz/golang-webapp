@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -70,9 +71,7 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	if data == nil {
 		data = map[string]any{}
 	}
-	for key, value := range getSessionData(r) {
-		data[key] = value
-	}
+	maps.Copy(data, getSessionData(r))
 	// Old-school cache-busting technique: add commit info so that we can use versioned
 	// static paths to prevent browsers from using old assets with new deployments.
 	data["Commit"] = build.Commit()

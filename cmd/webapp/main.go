@@ -101,12 +101,11 @@ func (a appCfg) parseKnownUsers() map[string]string {
 		return nil
 	}
 	users := map[string]string{}
-	for _, token := range strings.Split(a.KnownUsers, ",") {
-		tuple := strings.SplitN(token, ":", 2)
-		if len(tuple) != 2 {
-			continue
+	for token := range strings.SplitSeq(a.KnownUsers, ",") {
+		before, after, found := strings.Cut(token, ":")
+		if found {
+			users[before] = after
 		}
-		users[tuple[0]] = tuple[1]
 	}
 	return users
 }
