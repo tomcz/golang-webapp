@@ -16,6 +16,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/gorilla/sessions"
+	"github.com/sethvargo/go-password/password"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/build"
@@ -35,18 +36,35 @@ type appCfg struct {
 	SessionAuthKey string        `name:"auth-key" env:"SESSION_AUTH_KEY" help:"Session authentication key."`
 	SessionEncKey  string        `name:"enc-key" env:"SESSION_ENC_KEY" help:"Session encryption key."`
 	Version        bool          `name:"version" short:"v" help:"Show build version and exit."`
+	Keygen         bool          `name:"keygen" short:"k" help:"Generate session keys and exit."`
 }
 
 func main() {
 	var app appCfg
 	kong.Parse(&app, kong.Description("Example golang webapp."))
+	log := app.setupLogging()
 
 	if app.Version {
 		fmt.Println(build.Version())
 		os.Exit(0)
 	}
 
-	log := app.setupLogging()
+	if app.Keygen {
+		authKey, err := password.Generate(64, 10, 0, false, true)
+		if err != nil {
+			log.Error("keygen failed", "error", err)
+			os.Exit(1)
+		}
+		encKey, err := password.Generate(64, 10, 0, false, true)
+		if err != nil {
+			log.Error("keygen failed", "error", err)
+			os.Exit(1)
+		}
+		fmt.Printf("export SESSION_AUTH_KEY=%q\n", authKey)
+		fmt.Printf("export SESSION_ENC_KEY=%q\n", encKey)
+		os.Exit(0)
+	}
+
 	if err := app.run(log); err != nil {
 		log.Error("application failed", "error", err)
 		os.Exit(1)
