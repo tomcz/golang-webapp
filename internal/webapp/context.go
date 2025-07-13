@@ -42,7 +42,7 @@ func (m *metadataFields) Slice() []any {
 func newMetadataFields() *metadataFields {
 	reqID, err := password.Generate(7, 2, 0, true, false)
 	if err != nil {
-		reqID = "XXX"
+		reqID = "XXXX"
 	}
 	return &metadataFields{
 		fields:    make(map[string]any),
