@@ -3,52 +3,48 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>golang-webapp</title>
-  <meta name="htmx-config" content='{"responseHandling": [{"code":".*", "swap": true}]}'>
-  <link rel="stylesheet" href="/static/{{ .Commit }}/spectre.min.css">
-  <script src="/static/{{ .Commit }}/htmx.min.js"></script>
+  <link rel="stylesheet" href="/static/{{ .Commit }}/bootstrap.min.css">
+  <script src="/static/{{ .Commit }}/bootstrap.bundle.min.js" defer></script>
   {{- template "head" . }}
 </head>
 <body>
-<div class="container grid-lg" hx-on::send-error="window.location.reload()">
-{{- range .FlashError }}
-  <div class="toast toast-error mt-1" role="alert">
-    {{ template "hide-toast" }}
+<header class="container">
+  {{- if .AuthUser }}
+  <nav class="navbar bg-body-tertiary mb-3">
+    <h1 class="mx-3">Webapp Example</h1>
+    <a class="mx-3" href="/logout">Sign out ({{ .AuthUser }})</a>
+  </nav>
+  {{- end }}
+  {{- range .FlashError }}
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
     {{ . }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
-{{- end }}
-{{- range .FlashWarning }}
-  <div class="toast toast-warning mt-1" role="alert">
-    {{ template "hide-toast" }}
+  {{- end }}
+  {{- range .FlashWarning }}
+  <div class="alert alert-warning alert-dismissible fade show" role="alert">
     {{ . }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
-{{- end }}
-{{- range .FlashSuccess }}
-  <div class="toast toast-success mt-1" role="alert">
-    {{ template "hide-toast" }}
+  {{- end }}
+  {{- range .FlashSuccess }}
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
     {{ . }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
-{{- end }}
-{{- range .FlashMessage }}
-  <div class="toast toast-primary mt-1" role="alert">
-    {{ template "hide-toast" }}
+  {{- end }}
+  {{- range .FlashMessage }}
+  <div class="alert alert-info alert-dismissible fade show" role="alert">
     {{ . }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
-{{- end }}
-{{- if .AuthUser }}
-  <div class="text-right my-2">
-    <a href="/logout">Sign out ({{ .AuthUser }})</a>
-  </div>
-{{- end }}
+  {{- end }}
+</header>
 {{- template "body" . }}
-</div>
 </body>
 </html>
-{{- end }}
-{{- define "hide-toast" }}
-<button class="btn btn-clear float-right" hx-on:click="this.closest('div.toast').classList.add('d-hide')"></button>
 {{- end }}
 {{- define "head" }}{{ end }}
 {{- define "body" }}{{ end }}

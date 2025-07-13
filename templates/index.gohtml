@@ -1,25 +1,23 @@
+{{- define "head" }}
+  <meta name="htmx-config" content='{"responseHandling": [{"code":".*", "swap": true}]}'>
+  <script src="/static/{{ .Commit }}/htmx.min.js"></script>
+{{- end }}
 {{- define "body" }}
-  <div class="columns">
-    <div class="column col-6 col-mx-auto">
-      <form method="post"
-            action="/index"
-            hx-post="/index"
-            hx-target="#hello-form-target"
-            hx-disabled-elt="find fieldset">
-        <fieldset>
-          <div class="input-group">
-            <label class="input-group-addon" for="name">Say hello to</label>
-            <input class="form-input" type="text" id="name" name="name" placeholder="World" required autofocus>
-            <button type="submit" class="btn btn-primary input-group-btn">Go</button>
-          </div>
-        </fieldset>
-      </form>
-      <div id="hello-form-target" class="my-2">{{ if .Name }}{{ template "hello" . }}{{ end }}</div>
-    </div>
-  </div>
+  <main class="container" hx-on::send-error="window.location.reload()">
+    <form method="post"
+          action="/index"
+          hx-post="/index"
+          hx-target="#hello-form-target"
+          hx-disabled-elt="find fieldset">
+      <fieldset class="hstack gap-3 mb-3">
+        <label class="form-label text-nowrap my-0" for="name">Say hello to:</label>
+        <input class="form-control w-25" type="text" id="name" name="name" placeholder="the world" required autofocus>
+        <button class="btn btn-primary px-5" type="submit">Go</button>
+      </fieldset>
+    </form>
+    <section id="hello-form-target">{{ if .Name }}{{ template "hello" . }}{{ end }}</section>
+  </main>
 {{- end }}
 {{- define "hello" }}
-  <div class="toast" role="alert">
-    Hello {{ .Name }}
-  </div>
+  <div class="alert alert-primary" role="alert">Hello {{ .Name }}</div>
 {{- end }}
