@@ -50,8 +50,8 @@ func main() {
 	}
 
 	if app.Keygen {
-		fmt.Printf("export SESSION_AUTH_KEY=%q\n", randomPassword(log))
-		fmt.Printf("export SESSION_ENC_KEY=%q\n", randomPassword(log))
+		fmt.Printf("export SESSION_AUTH_KEY=%q\n", generatePassword())
+		fmt.Printf("export SESSION_ENC_KEY=%q\n", generatePassword())
 		os.Exit(0)
 	}
 
@@ -174,11 +174,6 @@ func sessionKey(key string) []byte {
 	return buf
 }
 
-func randomPassword(log *slog.Logger) string {
-	pwd, err := password.Generate(64, 10, 0, false, true)
-	if err != nil {
-		log.Error("keygen failed", "error", err)
-		os.Exit(1)
-	}
-	return pwd
+func generatePassword() string {
+	return password.MustGenerate(64, 10, 0, false, true)
 }
