@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/templates"
 )
 
@@ -74,7 +73,7 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	maps.Copy(data, getSessionData(r))
 	// Old-school cache-busting technique: add commit info so that we can use versioned
 	// static paths to prevent browsers from using old assets with new deployments.
-	data["Commit"] = build.Commit()
+	data["Commit"] = r.Context().Value(currentCommitKey)
 
 	if !saveSession(w, r) {
 		return // error response rendered
@@ -101,10 +100,12 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 var tmplCache sync.Map
 
 func newTemplate(templatePaths ...string) (*template.Template, error) {
-	// There is no need to recreate templates in prod builds
+	// There is no need to recreate templates in embedded builds
 	// since they're not going to change between renders.
 	var cacheKey string
-	if build.IsProd {
+	// No goland, it isn't always false.
+	//goland:noinspection GoBoolExpressions
+	if templates.Embedded {
 		cacheKey = strings.Join(templatePaths, ",")
 		if cached, ok := tmplCache.Load(cacheKey); ok {
 			return cached.(*template.Template), nil
@@ -124,7 +125,9 @@ func newTemplate(templatePaths ...string) (*template.Template, error) {
 			return nil, fmt.Errorf("%s parse failed: %w", path, err)
 		}
 	}
-	if build.IsProd {
+	// No goland, it isn't always false.
+	//goland:noinspection GoBoolExpressions
+	if templates.Embedded {
 		tmplCache.Store(cacheKey, tmpl)
 	}
 	return tmpl, nil

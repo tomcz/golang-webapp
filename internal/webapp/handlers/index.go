@@ -7,19 +7,18 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp"
 )
 
-func showIndex(w http.ResponseWriter, r *http.Request) {
-	session := webapp.CurrentSession(r)
-	if session.GetString("examples_shown") != "yes" {
-		session.AddFlashError("example flash error message")
-		session.AddFlashWarning("example flash warning message")
-		session.AddFlashMessage("example flash generic message")
-		session.AddFlashSuccess("example flash success message")
-		session.Set("examples_shown", "yes")
+func showIndex(w http.ResponseWriter, r *http.Request, s webapp.Session) {
+	if s.GetString("examples_shown") != "yes" {
+		s.AddFlashError("example flash error message")
+		s.AddFlashWarning("example flash warning message")
+		s.AddFlashMessage("example flash generic message")
+		s.AddFlashSuccess("example flash success message")
+		s.Set("examples_shown", "yes")
 	}
-	data := authData(r)
+	data := authData(s)
 	var opts []webapp.RenderOpt
-	if name := session.GetString("Name"); name != "" {
-		session.Delete("Name")
+	if name := s.GetString("Name"); name != "" {
+		s.Delete("Name")
 		data["Name"] = name
 		if isPartial(r) {
 			opts = append(opts,
@@ -31,10 +30,10 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	webapp.Render(w, r, "index.gohtml", data, opts...)
 }
 
-func updateIndex(w http.ResponseWriter, r *http.Request) {
+func updateIndex(w http.ResponseWriter, r *http.Request, s webapp.Session) {
 	nameParam := strings.TrimSpace(r.PostFormValue("name"))
 	if nameParam != "" {
-		webapp.CurrentSession(r).Set("Name", nameParam)
+		s.Set("Name", nameParam)
 	}
 	redirectToIndex(w, r)
 }

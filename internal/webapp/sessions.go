@@ -2,6 +2,7 @@ package webapp
 
 import (
 	"context"
+	"encoding/gob"
 	"net/http"
 
 	"github.com/gorilla/sessions"
@@ -23,6 +24,8 @@ const (
 	sessionFlashError   = "_Flash_Error_"
 )
 
+type HandlerWithSession func(w http.ResponseWriter, r *http.Request, s Session)
+
 type Session interface {
 	Set(key string, value any)
 	Get(key string) (any, bool)
@@ -35,20 +38,17 @@ type Session interface {
 	Clear()
 }
 
-func CurrentSession(r *http.Request) Session {
-	session := getSession(r)
-	if session == nil {
-		panic("no current session")
-	}
-	return &sessionWrapper{session}
+// RegisterWithSessionSerializer a prototype of something you expect to store in the session.
+func RegisterWithSessionSerializer(prototype any) {
+	gob.Register(prototype)
 }
 
-func sessionMiddleware(store sessions.Store, sessionName string, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func withSession(store sessions.Store, sessionName string, next HandlerWithSession) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		session, _ := store.New(r, sessionName)
 		ctx := context.WithValue(r.Context(), currentSessionKey, session)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+		next(w, r.WithContext(ctx), &sessionWrapper{session})
+	}
 }
 
 func getSession(r *http.Request) *sessions.Session {

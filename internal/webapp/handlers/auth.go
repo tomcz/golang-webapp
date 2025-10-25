@@ -15,12 +15,11 @@ const (
 	afterLoginKey = "AfterLogin"
 )
 
-func private(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		s := webapp.CurrentSession(r)
+func private(next webapp.HandlerWithSession) webapp.HandlerWithSession {
+	return func(w http.ResponseWriter, r *http.Request, s webapp.Session) {
 		if user := s.GetString(authUserKey); user != "" {
 			webapp.RSet(r, "auth_user", user)
-			next(w, r)
+			next(w, r, s)
 			return
 		}
 		if isPartial(r) {
@@ -43,14 +42,11 @@ func private(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func authData(r *http.Request) map[string]any {
-	session := webapp.CurrentSession(r)
-	username := session.GetString(authUserKey)
-	return map[string]any{authUserKey: username}
+func authData(s webapp.Session) map[string]any {
+	return map[string]any{authUserKey: s.GetString(authUserKey)}
 }
 
-func showLogin(w http.ResponseWriter, r *http.Request) {
-	s := webapp.CurrentSession(r)
+func showLogin(w http.ResponseWriter, r *http.Request, s webapp.Session) {
 	if user := s.GetString(authUserKey); user != "" {
 		redirectToIndex(w, r)
 		return
@@ -58,9 +54,8 @@ func showLogin(w http.ResponseWriter, r *http.Request) {
 	webapp.Render(w, r, "login.gohtml", nil)
 }
 
-func handleLogin(knownUsers map[string]string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		s := webapp.CurrentSession(r)
+func handleLogin(knownUsers map[string]string) webapp.HandlerWithSession {
+	return func(w http.ResponseWriter, r *http.Request, s webapp.Session) {
 		username := strings.TrimSpace(r.PostFormValue("username"))
 		password := strings.TrimSpace(r.PostFormValue("password"))
 		expected, ok := knownUsers[username]
@@ -79,14 +74,14 @@ func handleLogin(knownUsers map[string]string) http.HandlerFunc {
 		s.Set(authUserKey, username)
 		webapp.RSet(r, "auth_user", username)
 		if redirect := s.GetString(afterLoginKey); redirect != "" {
-			webapp.RedirectToUrl(w, r, redirect)
+			webapp.RedirectToURL(w, r, redirect)
 			return
 		}
 		redirectToIndex(w, r)
 	}
 }
 
-func handleLogout(w http.ResponseWriter, r *http.Request) {
-	webapp.CurrentSession(r).Clear()
+func handleLogout(w http.ResponseWriter, r *http.Request, s webapp.Session) {
+	s.Clear()
 	redirectToIndex(w, r)
 }

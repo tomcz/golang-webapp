@@ -6,22 +6,15 @@ import (
 	"github.com/tomcz/golang-webapp/internal/webapp"
 )
 
-func NewHandler(knownUsers map[string]string) http.Handler {
-	r := webapp.NewRouter()
-	r.Handle("/{$}", "index", http.RedirectHandler("/index", http.StatusFound))
+func RegisterRoutes(r *webapp.Router, knownUsers map[string]string) {
+	r.HandleFunc("/", "root", redirectToIndex)
 
-	r.HandleFunc("/error", "exampleError", exampleError)
-	r.HandleFunc("/panic", "examplePanic", examplePanic)
-	r.HandleFunc("/ping", "examplePing", examplePing)
+	r.HandleSession("/login", "showLogin", showLogin).Methods("GET")
+	r.HandleSession("/login", "handleLogin", handleLogin(knownUsers)).Methods("POST")
+	r.HandleSession("/logout", "handleLogout", handleLogout)
 
-	r.HandleFunc("GET /login", "showLogin", showLogin)
-	r.HandleFunc("POST /login", "handleLogin", handleLogin(knownUsers))
-	r.HandleFunc("/logout", "handleLogout", handleLogout)
-
-	r.HandleFunc("GET /index", "showIndex", private(showIndex))
-	r.HandleFunc("POST /index", "updateIndex", private(updateIndex))
-
-	return r.Handler()
+	r.HandleSession("/index", "showIndex", private(showIndex)).Methods("GET")
+	r.HandleSession("/index", "updateIndex", private(updateIndex)).Methods("POST")
 }
 
 func isPartial(r *http.Request) bool {
@@ -29,9 +22,9 @@ func isPartial(r *http.Request) bool {
 }
 
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	webapp.RedirectToUrl(w, r, "/login")
+	webapp.RedirectToRoute(w, r, "showLogin")
 }
 
 func redirectToIndex(w http.ResponseWriter, r *http.Request) {
-	webapp.RedirectToUrl(w, r, "/index")
+	webapp.RedirectToRoute(w, r, "showIndex")
 }

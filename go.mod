@@ -1,14 +1,16 @@
 module github.com/tomcz/golang-webapp
 
-go 1.24
+go 1.25
 
 require (
-	github.com/alecthomas/kong v1.11.0
+	github.com/alecthomas/kong v1.12.1
+	github.com/gorilla/handlers v1.5.2
+	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
-	github.com/sethvargo/go-password v0.3.1
-	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
-	github.com/urfave/negroni v1.0.0
-	golang.org/x/sync v0.14.0
+	golang.org/x/sync v0.17.0
 )
 
-require github.com/gorilla/securecookie v1.1.2 // indirect
+require (
+	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
+)

@@ -1,5 +1,5 @@
 GITCOMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
-LDFLAGS := -s -w -X github.com/tomcz/golang-webapp/build.commit=${GITCOMMIT}
+LDFLAGS := -s -w -X main.commit=${GITCOMMIT}
 
 .PHONY: all
 all: clean format lint test build-prod
@@ -13,7 +13,7 @@ target:
 
 .PHONY: format
 format:
-	goimports -w -local github.com/tomcz/golang-webapp .
+	golangci-lint fmt
 
 .PHONY: lint
 lint:

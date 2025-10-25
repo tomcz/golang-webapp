@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,61 +16,68 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/gorilla/sessions"
-	"github.com/sethvargo/go-password/password"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/tomcz/golang-webapp/build"
 	"github.com/tomcz/golang-webapp/internal/webapp"
 	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
 )
 
+// provided by go build
+var commit string
+
 type appCfg struct {
-	KnownUsers     string        `name:"known-users" env:"KNOWN_USERS" help:"Valid 'user:password,user2:password2,...' combinations."`
-	LogLevel       string        `name:"log-level" env:"LOG_LEVEL" default:"info" help:"Logging level (debug, info, warn, error)."`
-	LogType        string        `name:"log-type" env:"LOG_TYPE" default:"default" help:"Logger type (default, text, json)."`
-	ListenAddr     string        `name:"listen-addr" env:"LISTEN_ADDR" default:":3000" help:"Service 'ip:port' listen address."`
-	TlsCertFile    string        `name:"tls-cert" env:"TLS_CERT_FILE" type:"existingfile" help:"For HTTPS service, optional."`
-	TlsKeyFile     string        `name:"tls-key" env:"TLS_KEY_FILE" type:"existingfile" help:"For HTTPS service, optional."`
-	SessionName    string        `name:"session" env:"SESSION_NAME" default:"_app_session" help:"Name of session cookie."`
-	SessionMaxAge  time.Duration `name:"max-age" env:"SESSION_MAX_AGE" default:"24h" help:"MaxAge of session cookie."`
-	SessionAuthKey string        `name:"auth-key" env:"SESSION_AUTH_KEY" help:"Session authentication key."`
-	SessionEncKey  string        `name:"enc-key" env:"SESSION_ENC_KEY" help:"Session encryption key."`
-	Version        bool          `name:"version" short:"v" help:"Show build version and exit."`
-	Keygen         bool          `name:"keygen" short:"k" help:"Generate session keys and exit."`
+	KnownUsers     string        `env:"KNOWN_USERS" help:"Valid 'user:password,user2:password2,...' combinations."`
+	LogLevel       string        `env:"LOG_LEVEL" default:"info" help:"Logging level (debug, info, warn, error)."`
+	LogType        string        `env:"LOG_TYPE" default:"default" help:"Logger type (default, text, json)."`
+	ListenAddr     string        `env:"LISTEN_ADDR" default:":3000" help:"Service 'ip:port' listen address."`
+	TlsCertFile    string        `env:"TLS_CERT_FILE" type:"existingfile" help:"For HTTPS service, optional."`
+	TlsKeyFile     string        `env:"TLS_KEY_FILE" type:"existingfile" help:"For HTTPS service, optional."`
+	SessionName    string        `env:"SESSION_NAME" default:"_app_session" help:"Name of session cookie."`
+	SessionMaxAge  time.Duration `env:"SESSION_MAX_AGE" default:"24h" help:"MaxAge of session cookie."`
+	SessionAuthKey string        `env:"SESSION_AUTH_KEY" help:"Session authentication key."`
+	SessionEncKey  string        `env:"SESSION_ENC_KEY" help:"Session encryption key."`
+	BehindProxy    bool          `env:"BEHIND_PROXY" help:"Use HTTP proxy headers."`
+	Version        bool          `short:"v" help:"Show build version and exit."`
+	Keygen         bool          `short:"k" help:"Generate session keys and exit."`
 }
 
 func main() {
 	var app appCfg
 	kong.Parse(&app, kong.Description("Example golang webapp."))
-	log := app.setupLogging()
 
 	if app.Version {
-		fmt.Println(build.Version())
+		fmt.Println(commit)
 		os.Exit(0)
 	}
 
 	if app.Keygen {
-		fmt.Printf("export SESSION_AUTH_KEY=%q\n", generatePassword())
-		fmt.Printf("export SESSION_ENC_KEY=%q\n", generatePassword())
+		fmt.Printf("export SESSION_AUTH_KEY=%q\n", base64.StdEncoding.EncodeToString(newSessionKey()))
+		fmt.Printf("export SESSION_ENC_KEY=%q\n", base64.StdEncoding.EncodeToString(newSessionKey()))
 		os.Exit(0)
 	}
 
-	if err := app.run(log); err != nil {
+	log := app.setupLogging()
+	if err := app.Run(log); err != nil {
 		log.Error("application failed", "error", err)
 		os.Exit(1)
 	}
 	log.Info("application stopped")
 }
 
-func (a appCfg) run(log *slog.Logger) error {
+func (a appCfg) Run(log *slog.Logger) error {
 	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
 
-	handler := handlers.NewHandler(a.parseKnownUsers())
-	handler = webapp.WithMiddleware(a.newSessionStore(useTLS), a.SessionName, handler)
+	sessionStore, err := a.newSessionStore(useTLS)
+	if err != nil {
+		return fmt.Errorf("newSessionStore: %w", err)
+	}
+
+	router := webapp.NewRouter(sessionStore, a.SessionName, commit, a.BehindProxy)
+	handlers.RegisterRoutes(router, a.parseKnownUsers())
 
 	server := &http.Server{
 		Addr:              a.ListenAddr,
-		Handler:           handler,
+		Handler:           router.Handler(),
 		ReadHeaderTimeout: time.Minute,
 		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
 		// to prevent connections from taking resources indefinitely.
@@ -97,7 +104,7 @@ func (a appCfg) run(log *slog.Logger) error {
 		defer cancel()
 		return server.Shutdown(timeout)
 	})
-	err := group.Wait()
+	err = group.Wait()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -130,7 +137,7 @@ func (a appCfg) setupLogging() *slog.Logger {
 	default:
 		level = slog.LevelInfo
 	}
-	logDefaults := []any{"build", build.Version()}
+	logDefaults := []any{"build", commit}
 	switch a.LogType {
 	case "text":
 		opts := &slog.HandlerOptions{Level: level}
@@ -147,8 +154,16 @@ func (a appCfg) setupLogging() *slog.Logger {
 	return slog.With("component", "main")
 }
 
-func (a appCfg) newSessionStore(useTLS bool) sessions.Store {
-	store := sessions.NewCookieStore(sessionKey(a.SessionAuthKey), sessionKey(a.SessionEncKey))
+func (a appCfg) newSessionStore(useTLS bool) (sessions.Store, error) {
+	authKey, err := sessionKey(a.SessionAuthKey)
+	if err != nil {
+		return nil, fmt.Errorf("SessionAuthKey: %w", err)
+	}
+	encKey, err := sessionKey(a.SessionEncKey)
+	if err != nil {
+		return nil, fmt.Errorf("SessionEncKey: %w", err)
+	}
+	store := sessions.NewCookieStore(authKey, encKey)
 	maxAge := int(a.SessionMaxAge.Seconds())
 	store.Options.MaxAge = maxAge
 	store.Options.HttpOnly = true
@@ -161,19 +176,25 @@ func (a appCfg) newSessionStore(useTLS bool) sessions.Store {
 		store.Options.SameSite = http.SameSiteDefaultMode
 	}
 	store.MaxAge(maxAge)
-	return store
+	return store, nil
 }
 
-func sessionKey(key string) []byte {
-	if key != "" {
-		buf := sha256.Sum256([]byte(key))
-		return buf[:]
+func sessionKey(key string) ([]byte, error) {
+	if key == "" {
+		return newSessionKey(), nil
 	}
+	buf, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return nil, err
+	}
+	if len(buf) != 32 {
+		return nil, errors.New("invalid key length")
+	}
+	return buf, nil
+}
+
+func newSessionKey() []byte {
 	buf := make([]byte, 32)
 	_, _ = rand.Read(buf)
 	return buf
-}
-
-func generatePassword() string {
-	return password.MustGenerate(64, 10, 0, false, true)
 }

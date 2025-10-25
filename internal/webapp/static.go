@@ -4,21 +4,22 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/tomcz/golang-webapp/build"
+	"github.com/gorilla/mux"
+
 	"github.com/tomcz/golang-webapp/static"
 )
 
-func registerStaticAssetRoutes(mux *http.ServeMux) {
+func registerStaticAssetRoutes(router *mux.Router, commit string) {
 	// Old-school cache-busting technique: add commit info so that we can use versioned
 	// static paths to prevent browsers from using old assets with new deployments.
-	prefix := fmt.Sprintf("/static/%s/", build.Commit())
+	prefix := fmt.Sprintf("/static/%s/", commit)
 	h := http.StripPrefix(prefix, http.FileServer(static.FS))
-	mux.Handle("/static/", withStaticCacheControl(withHandlerName("static", h)))
+	router.PathPrefix("/static/").Handler(withStaticCacheControl(h)).Name("static")
 }
 
 func withStaticCacheControl(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if build.IsProd {
+		if static.Embedded {
 			// embedded content can be cached by the browser for 10 minutes
 			w.Header().Set("Cache-Control", "private, max-age=600")
 		} else {
