@@ -67,7 +67,7 @@ func main() {
 func (a appCfg) Run(log *slog.Logger) error {
 	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
 
-	sessionStore, err := a.newSessionStore(useTLS)
+	sessionStore, err := a.newSessionStore(useTLS || a.BehindProxy)
 	if err != nil {
 		return fmt.Errorf("newSessionStore: %w", err)
 	}
