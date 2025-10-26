@@ -39,22 +39,22 @@ type appCfg struct {
 }
 
 func main() {
-	var app appCfg
-	kong.Parse(&app, kong.Description("Example golang webapp."))
+	var cfg appCfg
+	kong.Parse(&cfg, kong.Description("Example golang webapp."))
 
-	if app.Version {
+	if cfg.Version {
 		fmt.Println(commit)
 		os.Exit(0)
 	}
 
-	if app.Keygen {
+	if cfg.Keygen {
 		fmt.Printf("export SESSION_AUTH_KEY=%q\n", webapp.NewSessionKey())
 		fmt.Printf("export SESSION_ENC_KEY=%q\n", webapp.NewSessionKey())
 		os.Exit(0)
 	}
 
-	log := app.setupLogging()
-	if err := app.Run(log); err != nil {
+	log := cfg.setupLogging()
+	if err := cfg.Run(log); err != nil {
 		log.Error("application failed", "error", err)
 		os.Exit(1)
 	}
