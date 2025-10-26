@@ -16,7 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
-	"github.com/tomcz/golang-webapp/internal/webapp/handlers"
+	"github.com/tomcz/golang-webapp/internal/webapp/app"
 )
 
 // provided by go build
@@ -73,7 +73,7 @@ func (a appCfg) Run(log *slog.Logger) error {
 	})
 
 	router := webapp.NewRouter(sessions, a.BehindProxy, commit)
-	handlers.RegisterRoutes(router, a.parseKnownUsers())
+	app.RegisterRoutes(router, a.parseKnownUsers())
 
 	server := &http.Server{
 		Addr:              a.ListenAddr,
