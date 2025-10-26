@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/gorilla/handlers"
@@ -67,6 +68,24 @@ func (r *Router) Handler() http.Handler {
 		handler = handlers.ProxyHeaders(handler)
 	}
 	return withCurrentMetadata(handler)
+}
+
+func AbsoluteURL(r *http.Request, path string) string {
+	var sb strings.Builder
+	if r.URL.Scheme != "" {
+		// set by handlers.ProxyHeaders
+		sb.WriteString(r.URL.Scheme)
+		sb.WriteString("://")
+	} else if r.TLS != nil {
+		// only present on https listeners
+		sb.WriteString("https://")
+	} else {
+		sb.WriteString("http://")
+	}
+	// set by handlers.ProxyHeaders and net/http
+	sb.WriteString(r.Host)
+	sb.WriteString(path)
+	return sb.String()
 }
 
 func PathFor(r *http.Request, routeName string, patternVars ...string) string {
