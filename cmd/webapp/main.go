@@ -88,7 +88,7 @@ func (a appCfg) Run(log *slog.Logger) error {
 
 	group, ctx := errgroup.WithContext(ctx)
 	group.Go(func() error {
-		ll := log.With("addr", a.ListenAddr)
+		ll := log.With("addr", a.ListenAddr, "proxy", a.BehindProxy)
 		if useTLS {
 			ll.Info("starting server with TLS")
 			server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
