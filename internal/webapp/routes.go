@@ -132,15 +132,17 @@ func logFormatter(_ io.Writer, p handlers.LogFormatterParams) {
 	for key, value := range md.fields {
 		fields = append(fields, key, value)
 	}
+	var logFunc func(string, ...any)
 	if md.isDebug {
-		md.logger.Debug("request finished", fields...)
+		logFunc = md.logger.Debug
 	} else if p.StatusCode >= 500 {
-		md.logger.Error("request finished", fields...)
+		logFunc = md.logger.Error
 	} else if p.StatusCode >= 400 && p.StatusCode != 404 {
-		md.logger.Warn("request finished", fields...)
+		logFunc = md.logger.Warn
 	} else {
-		md.logger.Info("request finished", fields...)
+		logFunc = md.logger.Info
 	}
+	logFunc("request finished", fields...)
 }
 
 func withPanicRecovery(next http.Handler) http.Handler {
