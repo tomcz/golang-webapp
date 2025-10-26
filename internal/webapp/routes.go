@@ -69,7 +69,7 @@ func (r *Router) Handler() http.Handler {
 	return withCurrentMetadata(handler)
 }
 
-func RedirectToRoute(w http.ResponseWriter, r *http.Request, routeName string, patternVars ...string) {
+func PathFor(r *http.Request, routeName string, patternVars ...string) string {
 	router, ok := r.Context().Value(currentRouterKey).(*mux.Router)
 	if !ok {
 		// this is a coding error that cannot be fixed at runtime
@@ -80,11 +80,17 @@ func RedirectToRoute(w http.ResponseWriter, r *http.Request, routeName string, p
 		// this is a coding error that cannot be fixed at runtime
 		panic(err)
 	}
-	RedirectToURL(w, r, routeURL.String())
+	path := routeURL.String()
+	return path
+}
+
+func RedirectToRoute(w http.ResponseWriter, r *http.Request, routeName string, patternVars ...string) {
+	RedirectToURL(w, r, PathFor(r, routeName, patternVars...))
 }
 
 func RedirectToURL(w http.ResponseWriter, r *http.Request, url string) {
 	if saveSession(w, r) {
+		RSet(r, "res_location", url)
 		http.Redirect(w, r, url, http.StatusFound)
 	}
 }
