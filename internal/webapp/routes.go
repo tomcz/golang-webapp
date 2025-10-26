@@ -13,7 +13,6 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 )
 
 const (
@@ -23,19 +22,17 @@ const (
 
 type Router struct {
 	router      *mux.Router
-	store       sessions.Store
-	sessionName string
+	sessions    SessionProvider
 	behindProxy bool
 	commit      string
 }
 
-func NewRouter(store sessions.Store, sessionName string, behindProxy bool, commit string) *Router {
+func NewRouter(sessions SessionProvider, behindProxy bool, commit string) *Router {
 	router := mux.NewRouter()
 	registerStaticAssetRoutes(router, commit)
 	return &Router{
 		router:      router,
-		store:       store,
-		sessionName: sessionName,
+		sessions:    sessions,
 		behindProxy: behindProxy,
 		commit:      commit,
 	}
@@ -50,7 +47,7 @@ func (r *Router) HandleFunc(path, name string, handler http.HandlerFunc) *mux.Ro
 }
 
 func (r *Router) HandleSession(path, name string, handler HandlerWithSession) *mux.Route {
-	return r.HandleFunc(path, name, withSession(r.store, r.sessionName, handler))
+	return r.HandleFunc(path, name, r.sessions(handler))
 }
 
 func (r *Router) Handler() http.Handler {

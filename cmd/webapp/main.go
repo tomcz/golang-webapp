@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/tls"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,7 +13,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/gorilla/sessions"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
@@ -51,8 +48,8 @@ func main() {
 	}
 
 	if app.Keygen {
-		fmt.Printf("export SESSION_AUTH_KEY=%q\n", base64.StdEncoding.EncodeToString(newSessionKey()))
-		fmt.Printf("export SESSION_ENC_KEY=%q\n", base64.StdEncoding.EncodeToString(newSessionKey()))
+		fmt.Printf("export SESSION_AUTH_KEY=%q\n", webapp.NewSessionKey())
+		fmt.Printf("export SESSION_ENC_KEY=%q\n", webapp.NewSessionKey())
 		os.Exit(0)
 	}
 
@@ -67,12 +64,15 @@ func main() {
 func (a appCfg) Run(log *slog.Logger) error {
 	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
 
-	sessionStore, err := a.newSessionStore(useTLS || a.BehindProxy)
-	if err != nil {
-		return fmt.Errorf("newSessionStore: %w", err)
-	}
+	sessions := webapp.UseSessionCookies(webapp.SessionCookieConfig{
+		CookieName: a.SessionName,
+		AuthKey:    a.SessionAuthKey,
+		EncKey:     a.SessionEncKey,
+		MaxAge:     a.SessionMaxAge,
+		Secure:     useTLS || a.BehindProxy,
+	})
 
-	router := webapp.NewRouter(sessionStore, a.SessionName, a.BehindProxy, commit)
+	router := webapp.NewRouter(sessions, a.BehindProxy, commit)
 	handlers.RegisterRoutes(router, a.parseKnownUsers())
 
 	server := &http.Server{
@@ -104,7 +104,7 @@ func (a appCfg) Run(log *slog.Logger) error {
 		defer cancel()
 		return server.Shutdown(timeout)
 	})
-	err = group.Wait()
+	err := group.Wait()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -152,49 +152,4 @@ func (a appCfg) setupLogging() *slog.Logger {
 		slog.SetDefault(slog.Default().With(logDefaults...))
 	}
 	return slog.With("component", "main")
-}
-
-func (a appCfg) newSessionStore(secureSession bool) (sessions.Store, error) {
-	authKey, err := sessionKey(a.SessionAuthKey)
-	if err != nil {
-		return nil, fmt.Errorf("SessionAuthKey: %w", err)
-	}
-	encKey, err := sessionKey(a.SessionEncKey)
-	if err != nil {
-		return nil, fmt.Errorf("SessionEncKey: %w", err)
-	}
-	store := sessions.NewCookieStore(authKey, encKey)
-	maxAge := int(a.SessionMaxAge.Seconds())
-	store.Options.MaxAge = maxAge
-	store.Options.HttpOnly = true
-	store.Options.Path = "/"
-	if secureSession {
-		store.Options.Secure = true
-		store.Options.SameSite = http.SameSiteNoneMode
-	} else {
-		store.Options.Secure = false
-		store.Options.SameSite = http.SameSiteDefaultMode
-	}
-	store.MaxAge(maxAge)
-	return store, nil
-}
-
-func sessionKey(key string) ([]byte, error) {
-	if key == "" {
-		return newSessionKey(), nil
-	}
-	buf, err := base64.StdEncoding.DecodeString(key)
-	if err != nil {
-		return nil, err
-	}
-	if len(buf) != 32 {
-		return nil, errors.New("invalid key length")
-	}
-	return buf, nil
-}
-
-func newSessionKey() []byte {
-	buf := make([]byte, 32)
-	_, _ = rand.Read(buf)
-	return buf
 }

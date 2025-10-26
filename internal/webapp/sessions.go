@@ -2,8 +2,12 @@ package webapp
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/gob"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/sessions"
 )
@@ -26,6 +30,8 @@ const (
 
 type HandlerWithSession func(w http.ResponseWriter, r *http.Request, s Session)
 
+type SessionProvider func(next HandlerWithSession) http.HandlerFunc
+
 type Session interface {
 	Set(key string, value any)
 	Get(key string) (any, bool)
@@ -43,12 +49,62 @@ func RegisterWithSessionSerializer(prototype any) {
 	gob.Register(prototype)
 }
 
-func withSession(store sessions.Store, sessionName string, next HandlerWithSession) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session, _ := store.New(r, sessionName)
-		ctx := context.WithValue(r.Context(), currentSessionKey, session)
-		next(w, r.WithContext(ctx), &sessionWrapper{session})
+type SessionCookieConfig struct {
+	CookieName string
+	AuthKey    string
+	EncKey     string
+	MaxAge     time.Duration
+	Secure     bool
+}
+
+func UseSessionCookies(cfg SessionCookieConfig) SessionProvider {
+	store := newCookieStore(cfg)
+	return func(next HandlerWithSession) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			session, _ := store.New(r, cfg.CookieName)
+			ctx := context.WithValue(r.Context(), currentSessionKey, session)
+			next(w, r.WithContext(ctx), &sessionWrapper{session})
+		}
 	}
+}
+
+func newCookieStore(cfg SessionCookieConfig) *sessions.CookieStore {
+	store := sessions.NewCookieStore(decodeSessionKey(cfg.AuthKey), decodeSessionKey(cfg.EncKey))
+	maxAge := int(cfg.MaxAge.Seconds())
+	store.Options.MaxAge = maxAge
+	store.Options.HttpOnly = true
+	store.Options.Path = "/"
+	if cfg.Secure {
+		store.Options.Secure = true
+		store.Options.SameSite = http.SameSiteNoneMode
+	} else {
+		store.Options.Secure = false
+		store.Options.SameSite = http.SameSiteDefaultMode
+	}
+	store.MaxAge(maxAge)
+	return store
+}
+
+func NewSessionKey() string {
+	return base64.StdEncoding.EncodeToString(newSessionKey())
+}
+
+func decodeSessionKey(key string) []byte {
+	if key == "" {
+		return newSessionKey()
+	}
+	buf, err := base64.StdEncoding.DecodeString(key)
+	if err == nil && len(buf) == 32 {
+		return buf
+	}
+	sum := sha256.Sum256([]byte(key))
+	return sum[:]
+}
+
+func newSessionKey() []byte {
+	buf := make([]byte, 32)
+	_, _ = rand.Read(buf)
+	return buf
 }
 
 func getSession(r *http.Request) *sessions.Session {
