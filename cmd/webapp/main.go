@@ -154,7 +154,7 @@ func (a appCfg) setupLogging() *slog.Logger {
 	return slog.With("component", "main")
 }
 
-func (a appCfg) newSessionStore(useTLS bool) (sessions.Store, error) {
+func (a appCfg) newSessionStore(secureSession bool) (sessions.Store, error) {
 	authKey, err := sessionKey(a.SessionAuthKey)
 	if err != nil {
 		return nil, fmt.Errorf("SessionAuthKey: %w", err)
@@ -168,7 +168,7 @@ func (a appCfg) newSessionStore(useTLS bool) (sessions.Store, error) {
 	store.Options.MaxAge = maxAge
 	store.Options.HttpOnly = true
 	store.Options.Path = "/"
-	if useTLS {
+	if secureSession {
 		store.Options.Secure = true
 		store.Options.SameSite = http.SameSiteNoneMode
 	} else {
