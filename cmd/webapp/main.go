@@ -72,7 +72,7 @@ func (a appCfg) Run(log *slog.Logger) error {
 		return fmt.Errorf("newSessionStore: %w", err)
 	}
 
-	router := webapp.NewRouter(sessionStore, a.SessionName, commit, a.BehindProxy)
+	router := webapp.NewRouter(sessionStore, a.SessionName, a.BehindProxy, commit)
 	handlers.RegisterRoutes(router, a.parseKnownUsers())
 
 	server := &http.Server{

@@ -25,19 +25,19 @@ type Router struct {
 	router      *mux.Router
 	store       sessions.Store
 	sessionName string
-	commit      string
 	behindProxy bool
+	commit      string
 }
 
-func NewRouter(store sessions.Store, sessionName string, commit string, behindProxy bool) *Router {
+func NewRouter(store sessions.Store, sessionName string, behindProxy bool, commit string) *Router {
 	router := mux.NewRouter()
 	registerStaticAssetRoutes(router, commit)
 	return &Router{
 		router:      router,
 		store:       store,
 		sessionName: sessionName,
-		commit:      commit,
 		behindProxy: behindProxy,
+		commit:      commit,
 	}
 }
 
