@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"runtime/debug"
 	"strings"
 	"time"
 
@@ -140,20 +139,6 @@ func logFormatter(_ io.Writer, p handlers.LogFormatterParams) {
 		logFunc = md.logger.Info
 	}
 	logFunc("request finished", fields...)
-}
-
-func withPanicRecovery(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if p := recover(); p != nil {
-				stack := string(debug.Stack())
-				RSet(r, "panic_stack", stack)
-				err := fmt.Errorf("panic: %v", p)
-				HttpError(w, r, http.StatusInternalServerError, "Request failed", err)
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
 }
 
 func withCommit(commit string) mux.MiddlewareFunc {
