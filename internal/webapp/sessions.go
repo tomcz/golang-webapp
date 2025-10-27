@@ -86,14 +86,14 @@ func newCookieStore(cfg SessionCookieConfig) *sessions.CookieStore {
 }
 
 func NewSessionKey() string {
-	return base64.StdEncoding.EncodeToString(newSessionKey())
+	return base64.URLEncoding.EncodeToString(newSessionKey())
 }
 
 func decodeSessionKey(key string) []byte {
 	if key == "" {
 		return newSessionKey()
 	}
-	buf, err := base64.StdEncoding.DecodeString(key)
+	buf, err := base64.URLEncoding.DecodeString(key)
 	if err == nil && len(buf) == 32 {
 		return buf
 	}
