@@ -22,7 +22,7 @@ import (
 // provided by go build
 var commit string
 
-type appCfg struct {
+type serviceCmd struct {
 	KnownUsers     string        `env:"KNOWN_USERS" help:"Valid 'user:password,user2:password2,...' combinations."`
 	LogLevel       string        `env:"LOG_LEVEL" default:"info" help:"Logging level (debug, info, warn, error)."`
 	LogType        string        `env:"LOG_TYPE" default:"default" help:"Logger type (default, text, json)."`
@@ -34,34 +34,39 @@ type appCfg struct {
 	SessionAuthKey string        `env:"SESSION_AUTH_KEY" help:"Session authentication key."`
 	SessionEncKey  string        `env:"SESSION_ENC_KEY" help:"Session encryption key."`
 	BehindProxy    bool          `env:"BEHIND_PROXY" help:"Use HTTP proxy headers."`
-	Version        bool          `short:"v" help:"Show build version and exit."`
-	Keygen         bool          `short:"k" help:"Generate session keys and exit."`
+}
+
+type keygenCmd struct{}
+
+type versionCmd struct{}
+
+type appCfg struct {
+	Service serviceCmd `cmd:"" default:"1" help:"Start the webapp."`
+	Version versionCmd `cmd:"" help:"Show build version and exit."`
+	Keygen  keygenCmd  `cmd:"" help:"Generate session keys and exit."`
 }
 
 func main() {
-	var cfg appCfg
-	kong.Parse(&cfg, kong.Description("Example golang webapp."))
-
-	if cfg.Version {
-		fmt.Println(commit)
-		os.Exit(0)
-	}
-
-	if cfg.Keygen {
-		fmt.Printf("export SESSION_AUTH_KEY=%q\n", webapp.NewSessionKey())
-		fmt.Printf("export SESSION_ENC_KEY=%q\n", webapp.NewSessionKey())
-		os.Exit(0)
-	}
-
-	log := cfg.setupLogging()
-	if err := cfg.Run(log); err != nil {
-		log.Error("application failed", "error", err)
+	cfg := kong.Parse(&appCfg{}, kong.Description("Example golang webapp."))
+	if err := cfg.Run(); err != nil {
+		slog.Error("application failed", "error", err)
 		os.Exit(1)
 	}
-	log.Info("application stopped")
 }
 
-func (a appCfg) Run(log *slog.Logger) error {
+func (*versionCmd) Run() error {
+	fmt.Println(commit)
+	return nil
+}
+
+func (*keygenCmd) Run() error {
+	fmt.Printf("export SESSION_AUTH_KEY=%q\n", webapp.NewSessionKey())
+	fmt.Printf("export SESSION_ENC_KEY=%q\n", webapp.NewSessionKey())
+	return nil
+}
+
+func (a *serviceCmd) Run() error {
+	log := a.setupLogging()
 	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
 
 	sessions := webapp.UseSessionCookies(webapp.SessionCookieConfig{
@@ -111,7 +116,7 @@ func (a appCfg) Run(log *slog.Logger) error {
 	return err
 }
 
-func (a appCfg) parseKnownUsers() map[string]string {
+func (a *serviceCmd) parseKnownUsers() map[string]string {
 	if a.KnownUsers == "" {
 		return nil
 	}
@@ -125,7 +130,7 @@ func (a appCfg) parseKnownUsers() map[string]string {
 	return users
 }
 
-func (a appCfg) setupLogging() *slog.Logger {
+func (a *serviceCmd) setupLogging() *slog.Logger {
 	var level slog.Level
 	switch a.LogLevel {
 	case "debug":
