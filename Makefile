@@ -45,4 +45,4 @@ run: build-prod
 
 .PHONY: keygen
 keygen: build-prod
-	./target/webapp -k
+	./target/webapp keygen
