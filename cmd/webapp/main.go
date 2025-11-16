@@ -76,13 +76,15 @@ func (a *serviceCmd) Run() error {
 		MaxAge:     a.SessionMaxAge,
 		Secure:     useTLS || a.BehindProxy,
 	})
-
-	router := webapp.NewRouter(sessions, a.BehindProxy, commit)
-	app.RegisterRoutes(router, a.parseKnownUsers())
-
+	handler := app.Handler(app.HandlerConfig{
+		Sessions:    sessions,
+		KnownUsers:  a.parseKnownUsers(),
+		Commit:      commit,
+		BehindProxy: a.BehindProxy,
+	})
 	server := &http.Server{
 		Addr:              a.ListenAddr,
-		Handler:           router.Handler(),
+		Handler:           handler,
 		ReadHeaderTimeout: time.Minute,
 		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
 		// to prevent connections from taking resources indefinitely.
