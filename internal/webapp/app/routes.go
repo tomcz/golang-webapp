@@ -28,7 +28,7 @@ func Handler(cfg HandlerConfig) http.Handler {
 	return r.Handler()
 }
 
-func isPartial(r *http.Request) bool {
+func isHtmx(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
 }
 

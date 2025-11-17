@@ -21,7 +21,7 @@ func private(next webapp.HandlerWithSession) webapp.HandlerWithSession {
 			next(w, r, s)
 			return
 		}
-		if isPartial(r) {
+		if isHtmx(r) {
 			w.Header().Set("HX-Redirect", "/login")
 			w.WriteHeader(http.StatusUnauthorized)
 			return

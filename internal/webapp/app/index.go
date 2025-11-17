@@ -20,7 +20,7 @@ func showIndex(w http.ResponseWriter, r *http.Request, s webapp.Session) {
 	if name := s.GetString("Name"); name != "" {
 		s.Delete("Name")
 		data["Name"] = name
-		if isPartial(r) {
+		if isHtmx(r) {
 			opts = append(opts,
 				webapp.RenderWithTemplateName("hello"),
 				webapp.RenderWithoutLayoutFile(),
