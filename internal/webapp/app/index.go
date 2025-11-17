@@ -16,16 +16,16 @@ func showIndex(w http.ResponseWriter, r *http.Request, s webapp.Session) {
 		s.Set("examples_shown", "yes")
 	}
 	data := authData(s)
-	var opts []webapp.RenderOpt
 	if name := s.GetString("Name"); name != "" {
 		s.Delete("Name")
 		data["Name"] = name
-		if isHtmx(r) {
-			opts = append(opts,
-				webapp.RenderWithTemplateName("hello"),
-				webapp.RenderWithoutLayoutFile(),
-			)
-		}
+	}
+	var opts []webapp.RenderOpt
+	if isHtmx(r) {
+		opts = append(opts,
+			webapp.RenderWithTemplateName("hello"),
+			webapp.RenderWithoutLayoutFile(),
+		)
 	}
 	webapp.Render(w, r, "index.gohtml", data, opts...)
 }
