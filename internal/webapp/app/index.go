@@ -22,10 +22,7 @@ func showIndex(w http.ResponseWriter, r *http.Request, s webapp.Session) {
 	}
 	var opts []webapp.RenderOpt
 	if isHtmx(r) {
-		opts = append(opts,
-			webapp.RenderWithTemplateName("hello"),
-			webapp.RenderWithoutLayoutFile(),
-		)
+		opts = append(opts, webapp.RenderWithTemplateName("hello"))
 	}
 	webapp.Render(w, r, "index.gohtml", data, opts...)
 }
