@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/lmittmann/tint"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
@@ -25,7 +26,7 @@ var commit string
 type serviceCmd struct {
 	KnownUsers     string        `env:"KNOWN_USERS" help:"Valid 'user:password,user2:password2,...' combinations."`
 	LogLevel       string        `env:"LOG_LEVEL" default:"info" help:"Logging level (debug, info, warn, error)."`
-	LogType        string        `env:"LOG_TYPE" default:"default" help:"Logger type (default, text, json)."`
+	LogType        string        `env:"LOG_TYPE" default:"colour" help:"Logger type (default, colour, text, json)."`
 	ListenAddr     string        `env:"LISTEN_ADDR" default:":3000" help:"Service 'ip:port' listen address."`
 	TlsCertFile    string        `env:"TLS_CERT_FILE" type:"existingfile" help:"For HTTPS service, optional."`
 	TlsKeyFile     string        `env:"TLS_KEY_FILE" type:"existingfile" help:"For HTTPS service, optional."`
@@ -153,6 +154,10 @@ func (a *serviceCmd) setupLogging() *slog.Logger {
 	case "json":
 		opts := &slog.HandlerOptions{Level: level}
 		h := slog.NewJSONHandler(os.Stderr, opts)
+		slog.SetDefault(slog.New(h).With(logDefaults...))
+	case "colour":
+		opts := &tint.Options{Level: level, TimeFormat: time.TimeOnly}
+		h := tint.NewHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
 	default:
 		slog.SetLogLoggerLevel(level)
