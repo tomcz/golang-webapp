@@ -152,7 +152,7 @@ func writeUnbuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Temp
 	w.WriteHeader(cfg.statusCode)
 	err := tmpl.ExecuteTemplate(w, cfg.templateName, data)
 	if err != nil {
-		RLog(r).Error("unbuffered write failed", "error", err)
+		RLog(r).Error("unbuffered write failed", "err", err)
 	}
 }
 
@@ -171,6 +171,6 @@ func writeBuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Templa
 	w.WriteHeader(cfg.statusCode)
 	_, err = buf.WriteTo(w)
 	if err != nil {
-		RLog(r).Error("buffered write failed", "error", err)
+		RLog(r).Error("buffered write failed", "err", err)
 	}
 }
