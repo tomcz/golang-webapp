@@ -149,6 +149,7 @@ func readTemplate(path string) ([]byte, error) {
 
 func writeUnbuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Template, data map[string]any, cfg *renderCfg) {
 	w.Header().Set("Content-Type", cfg.contentType)
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(cfg.statusCode)
 	err := tmpl.ExecuteTemplate(w, cfg.templateName, data)
 	if err != nil {
@@ -168,6 +169,7 @@ func writeBuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Templa
 	}
 
 	w.Header().Set("Content-Type", cfg.contentType)
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(cfg.statusCode)
 	_, err = buf.WriteTo(w)
 	if err != nil {
