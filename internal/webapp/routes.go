@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -119,35 +120,35 @@ func HttpError(w http.ResponseWriter, r *http.Request, statusCode int, msg strin
 
 func logFormatter(_ io.Writer, p handlers.LogFormatterParams) {
 	duration := time.Since(p.TimeStamp)
-	fields := []any{
-		"req_start_at", p.TimeStamp,
-		"req_host", p.Request.Host,
-		"req_method", p.Request.Method,
-		"req_uri", p.Request.RequestURI,
-		"req_user_agent", p.Request.UserAgent(),
-		"req_remote_addr", p.Request.RemoteAddr,
-		"res_status", p.StatusCode,
-		"res_duration_ms", duration.Milliseconds(),
-		"res_duration_ns", duration.Nanoseconds(),
+	fields := []slog.Attr{
+		slog.Time("req_start_at", p.TimeStamp),
+		slog.String("req_host", p.Request.Host),
+		slog.String("req_method", p.Request.Method),
+		slog.String("req_uri", p.Request.RequestURI),
+		slog.String("req_user_agent", p.Request.UserAgent()),
+		slog.String("req_remote_addr", p.Request.RemoteAddr),
+		slog.Int("res_status", p.StatusCode),
+		slog.Int64("res_duration_ms", duration.Milliseconds()),
+		slog.Int64("res_duration_ns", duration.Nanoseconds()),
 	}
 	if p.Size > 0 {
-		fields = append(fields, "res_size", p.Size)
+		fields = append(fields, slog.Int("res_size", p.Size))
 	}
 	md := currentMetadataFields(p.Request)
 	for key, value := range md.fields {
-		fields = append(fields, key, value)
+		fields = append(fields, slog.Any(key, value))
 	}
-	var logFunc func(string, ...any)
+	var level slog.Level
 	if md.isDebug {
-		logFunc = md.logger.Debug
+		level = slog.LevelDebug
 	} else if p.StatusCode >= 500 {
-		logFunc = md.logger.Error
+		level = slog.LevelError
 	} else if p.StatusCode >= 400 && p.StatusCode != 404 {
-		logFunc = md.logger.Warn
+		level = slog.LevelWarn
 	} else {
-		logFunc = md.logger.Info
+		level = slog.LevelInfo
 	}
-	logFunc("request finished", fields...)
+	md.logger.LogAttrs(p.Request.Context(), level, "request finished", fields...)
 }
 
 func withPanicRecovery(next http.Handler) http.Handler {
