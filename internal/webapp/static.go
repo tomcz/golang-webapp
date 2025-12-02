@@ -18,11 +18,14 @@ func registerStaticAssetRoutes(router *mux.Router, commit string) {
 }
 
 func withStaticCacheControl(next http.Handler) http.Handler {
+	// No goland, it isn't always false.
+	//goland:noinspection GoBoolExpressions
+	if static.Embedded {
+		return next
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !static.Embedded {
-			// don't cache local assets so we can work on them easily
-			w.Header().Set("Cache-Control", "no-store")
-		}
+		// don't cache file assets so we can work on them easily
+		w.Header().Set("Cache-Control", "no-store")
 		next.ServeHTTP(w, r)
 	})
 }
