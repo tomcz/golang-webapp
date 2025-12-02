@@ -17,6 +17,7 @@ type renderCfg struct {
 	templateName string
 	statusCode   int
 	contentType  string
+	cacheControl string
 	unbuffered   bool
 }
 
@@ -50,6 +51,12 @@ func RenderWithContentType(contentType string) RenderOpt {
 	}
 }
 
+func RenderWithCacheControl(cacheControl string) RenderOpt {
+	return func(cfg *renderCfg) {
+		cfg.cacheControl = cacheControl
+	}
+}
+
 func RenderWithoutBuffer() RenderOpt {
 	return func(cfg *renderCfg) {
 		cfg.unbuffered = true
@@ -62,6 +69,7 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 		templateName: "main",
 		statusCode:   http.StatusOK,
 		contentType:  "text/html; charset=utf-8",
+		cacheControl: "no-store",
 	}
 	for _, opt := range opts {
 		opt(cfg)
@@ -148,9 +156,7 @@ func readTemplate(path string) ([]byte, error) {
 }
 
 func writeUnbuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Template, data map[string]any, cfg *renderCfg) {
-	w.Header().Set("Content-Type", cfg.contentType)
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(cfg.statusCode)
+	writeHeaders(w, cfg)
 	err := tmpl.ExecuteTemplate(w, cfg.templateName, data)
 	if err != nil {
 		RLog(r).Error("unbuffered write failed", "err", err)
@@ -168,11 +174,16 @@ func writeBuffered(w http.ResponseWriter, r *http.Request, tmpl *template.Templa
 		return
 	}
 
-	w.Header().Set("Content-Type", cfg.contentType)
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(cfg.statusCode)
+	writeHeaders(w, cfg)
 	_, err = buf.WriteTo(w)
 	if err != nil {
 		RLog(r).Error("buffered write failed", "err", err)
 	}
+}
+
+func writeHeaders(w http.ResponseWriter, cfg *renderCfg) {
+	header := w.Header()
+	header.Set("Content-Type", cfg.contentType)
+	header.Set("Cache-Control", cfg.cacheControl)
+	w.WriteHeader(cfg.statusCode)
 }
