@@ -57,7 +57,6 @@ func (r *Router) Handler() http.Handler {
 		withCommit(r.commit),
 		withRouter(r.router),
 		withHandlerName,
-		withDynamicCacheControl,
 		withSecurityHeaders,
 		withCsrfProtection,
 	)
@@ -196,12 +195,7 @@ func withHandlerName(next http.Handler) http.Handler {
 	})
 }
 
-func withDynamicCacheControl(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		next.ServeHTTP(w, r)
-	})
-}
+
 
 // Ref: https://blog.appcanary.com/2017/http-security-headers.html
 // Use github.com/unrolled/secure when CSP, HSTS, or HPKP is needed.
