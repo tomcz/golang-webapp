@@ -120,6 +120,21 @@ func HttpError(w http.ResponseWriter, r *http.Request, statusCode int, msg strin
 
 func logFormatter(_ io.Writer, p handlers.LogFormatterParams) {
 	duration := time.Since(p.TimeStamp)
+	md := currentMetadataFields(p.Request)
+	var level slog.Level
+	if md.isDebug {
+		level = slog.LevelDebug
+	} else if p.StatusCode >= 500 {
+		level = slog.LevelError
+	} else if p.StatusCode >= 400 && p.StatusCode != 404 {
+		level = slog.LevelWarn
+	} else {
+		level = slog.LevelInfo
+	}
+	ctx := p.Request.Context()
+	if !md.logger.Enabled(ctx, level) {
+		return // no need to build fields that will not be logged
+	}
 	fields := []slog.Attr{
 		slog.Time("req_start_at", p.TimeStamp),
 		slog.String("req_host", p.Request.Host),
@@ -134,21 +149,10 @@ func logFormatter(_ io.Writer, p handlers.LogFormatterParams) {
 	if p.Size > 0 {
 		fields = append(fields, slog.Int("res_size", p.Size))
 	}
-	md := currentMetadataFields(p.Request)
 	for key, value := range md.fields {
 		fields = append(fields, slog.Any(key, value))
 	}
-	var level slog.Level
-	if md.isDebug {
-		level = slog.LevelDebug
-	} else if p.StatusCode >= 500 {
-		level = slog.LevelError
-	} else if p.StatusCode >= 400 && p.StatusCode != 404 {
-		level = slog.LevelWarn
-	} else {
-		level = slog.LevelInfo
-	}
-	md.logger.LogAttrs(p.Request.Context(), level, "request finished", fields...)
+	md.logger.LogAttrs(ctx, level, "request finished", fields...)
 }
 
 func withPanicRecovery(next http.Handler) http.Handler {
