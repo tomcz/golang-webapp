@@ -3,7 +3,6 @@ package webapp
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"log/slog"
 	"net/http"
 )
@@ -26,9 +25,7 @@ func (m *metadataFields) Set(key string, value any) {
 }
 
 func newMetadataFields() *metadataFields {
-	buf := make([]byte, 8)
-	_, _ = rand.Read(buf)
-	reqID := hex.EncodeToString(buf)
+	reqID := rand.Text()
 	return &metadataFields{
 		fields:    make(map[string]any),
 		logger:    slog.With("component", "web", "req_id", reqID),
