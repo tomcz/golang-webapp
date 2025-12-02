@@ -50,7 +50,7 @@ type appCfg struct {
 func main() {
 	cfg := kong.Parse(&appCfg{}, kong.Description("Example golang webapp."))
 	if err := cfg.Run(); err != nil {
-		slog.Error("application failed", "err", err)
+		slog.Error("application failed", "error", err)
 		os.Exit(1)
 	}
 }
@@ -156,7 +156,7 @@ func (a *serviceCmd) setupLogging() *slog.Logger {
 		h := slog.NewJSONHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
 	case "colour":
-		opts := &tint.Options{Level: level, TimeFormat: time.TimeOnly}
+		opts := &tint.Options{Level: level, TimeFormat: time.TimeOnly, ReplaceAttr: highlightErrors}
 		h := tint.NewHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
 	default:
@@ -164,4 +164,13 @@ func (a *serviceCmd) setupLogging() *slog.Logger {
 		slog.SetDefault(slog.Default().With(logDefaults...))
 	}
 	return slog.With("component", "main")
+}
+
+func highlightErrors(_ []string, attr slog.Attr) slog.Attr {
+	if attr.Value.Kind() == slog.KindAny {
+		if _, ok := attr.Value.Any().(error); ok {
+			return tint.Attr(9, attr)
+		}
+	}
+	return attr
 }
