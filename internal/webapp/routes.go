@@ -118,7 +118,7 @@ func HttpError(w http.ResponseWriter, r *http.Request, statusCode int, msg strin
 }
 
 func logFormatter(_ io.Writer, p handlers.LogFormatterParams) {
-	reqDuration := time.Since(p.TimeStamp)
+	duration := time.Since(p.TimeStamp)
 	fields := []any{
 		"req_start_at", p.TimeStamp,
 		"req_host", p.Request.Host,
@@ -127,9 +127,11 @@ func logFormatter(_ io.Writer, p handlers.LogFormatterParams) {
 		"req_user_agent", p.Request.UserAgent(),
 		"req_remote_addr", p.Request.RemoteAddr,
 		"res_status", p.StatusCode,
-		"res_duration_ms", reqDuration.Milliseconds(),
-		"res_duration_ns", reqDuration.Nanoseconds(),
-		"res_size", p.Size,
+		"res_duration_ms", duration.Milliseconds(),
+		"res_duration_ns", duration.Nanoseconds(),
+	}
+	if p.Size > 0 {
+		fields = append(fields, "res_size", p.Size)
 	}
 	md := currentMetadataFields(p.Request)
 	for key, value := range md.fields {
