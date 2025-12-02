@@ -195,8 +195,6 @@ func withHandlerName(next http.Handler) http.Handler {
 	})
 }
 
-
-
 // Ref: https://blog.appcanary.com/2017/http-security-headers.html
 // Use github.com/unrolled/secure when CSP, HSTS, or HPKP is needed.
 func withSecurityHeaders(next http.Handler) http.Handler {
