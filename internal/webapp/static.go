@@ -18,14 +18,14 @@ func registerStaticAssetRoutes(router *mux.Router, commit string) {
 }
 
 func withStaticCacheControl(next http.Handler) http.Handler {
-	// No goland, it isn't always false.
-	//goland:noinspection GoBoolExpressions
-	if static.Embedded {
-		return next
-	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// don't cache file assets so we can work on them easily
-		w.Header().Set("Cache-Control", "no-store")
+		if static.Embedded {
+			// embedded content can be cached by the browser for 10 minutes
+			w.Header().Set("Cache-Control", "private, max-age=600")
+		} else {
+			// don't cache files so we can work on them easily
+			w.Header().Set("Cache-Control", "no-store")
+		}
 		next.ServeHTTP(w, r)
 	})
 }
