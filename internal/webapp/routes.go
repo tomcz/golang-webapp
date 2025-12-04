@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"time"
 
@@ -151,6 +152,9 @@ func logFormatter(_ io.Writer, p handlers.LogFormatterParams) {
 	for key, value := range md.fields {
 		fields = append(fields, slog.Any(key, value))
 	}
+	slices.SortFunc(fields, func(a, b slog.Attr) int {
+		return strings.Compare(a.Key, b.Key)
+	})
 	md.logger.LogAttrs(ctx, level, "request finished", fields...)
 }
 
