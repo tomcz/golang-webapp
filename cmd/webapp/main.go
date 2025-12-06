@@ -70,13 +70,16 @@ func (a *serviceCmd) Run() error {
 	log := a.setupLogging()
 	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
 
-	sessions := webapp.UseSessionCookies(webapp.SessionCookieConfig{
+	sessions, err := webapp.UseSessionCookies(webapp.SessionCookieConfig{
 		CookieName: a.SessionName,
 		AuthKey:    a.SessionAuthKey,
 		EncKey:     a.SessionEncKey,
 		MaxAge:     a.SessionMaxAge,
 		Secure:     useTLS || a.BehindProxy,
 	})
+	if err != nil {
+		return err
+	}
 	handler := app.Handler(app.HandlerConfig{
 		Sessions:    sessions,
 		KnownUsers:  a.parseKnownUsers(),
@@ -112,8 +115,8 @@ func (a *serviceCmd) Run() error {
 		defer cancel()
 		return server.Shutdown(timeout)
 	})
-	err := group.Wait()
-	if errors.Is(err, http.ErrServerClosed) {
+	err = group.Wait()
+	if err != nil && errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
 	return err

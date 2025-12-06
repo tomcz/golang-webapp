@@ -3,9 +3,9 @@ package webapp
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/gob"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -57,19 +57,24 @@ type SessionCookieConfig struct {
 	Secure     bool
 }
 
-func UseSessionCookies(cfg SessionCookieConfig) SessionProvider {
-	store := newCookieStore(cfg)
-	return func(next HandlerWithSession) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			session, _ := store.New(r, cfg.CookieName)
-			ctx := context.WithValue(r.Context(), currentSessionKey, session)
-			next(w, r.WithContext(ctx), &sessionWrapper{session})
-		}
+func UseSessionCookies(cfg SessionCookieConfig) (SessionProvider, error) {
+	store, err := newCookieStore(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("newCookieStore: %w", err)
 	}
+	return newSessionProvider(store, cfg.CookieName), nil
 }
 
-func newCookieStore(cfg SessionCookieConfig) *sessions.CookieStore {
-	store := sessions.NewCookieStore(decodeSessionKey(cfg.AuthKey), decodeSessionKey(cfg.EncKey))
+func newCookieStore(cfg SessionCookieConfig) (*sessions.CookieStore, error) {
+	authKey, err := decodeSessionKey(cfg.AuthKey)
+	if err != nil {
+		return nil, fmt.Errorf("auth key: %w", err)
+	}
+	encKey, err := decodeSessionKey(cfg.EncKey)
+	if err != nil {
+		return nil, fmt.Errorf("enc key: %w", err)
+	}
+	store := sessions.NewCookieStore(authKey, encKey)
 	maxAge := int(cfg.MaxAge.Seconds())
 	store.Options.MaxAge = maxAge
 	store.Options.HttpOnly = true
@@ -82,29 +87,41 @@ func newCookieStore(cfg SessionCookieConfig) *sessions.CookieStore {
 		store.Options.SameSite = http.SameSiteDefaultMode
 	}
 	store.MaxAge(maxAge)
-	return store
+	return store, nil
 }
 
 func NewSessionKey() string {
 	return base64.URLEncoding.EncodeToString(newSessionKey())
 }
 
-func decodeSessionKey(key string) []byte {
-	if key == "" {
-		return newSessionKey()
-	}
-	buf, err := base64.URLEncoding.DecodeString(key)
-	if err == nil && len(buf) == 32 {
-		return buf
-	}
-	sum := sha256.Sum256([]byte(key))
-	return sum[:]
-}
-
 func newSessionKey() []byte {
 	buf := make([]byte, 32)
 	_, _ = rand.Read(buf)
 	return buf
+}
+
+func decodeSessionKey(key string) ([]byte, error) {
+	if key == "" {
+		return newSessionKey(), nil
+	}
+	buf, err := base64.URLEncoding.DecodeString(key)
+	if err != nil {
+		return nil, err
+	}
+	if len(buf) != 32 {
+		return nil, fmt.Errorf("invalid size: expected 32, got %d", len(buf))
+	}
+	return buf, nil
+}
+
+func newSessionProvider(store sessions.Store, sessionName string) SessionProvider {
+	return func(next HandlerWithSession) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			session, _ := store.New(r, sessionName)
+			ctx := context.WithValue(r.Context(), currentSessionKey, session)
+			next(w, r.WithContext(ctx), &sessionWrapper{session})
+		}
+	}
 }
 
 func getSession(r *http.Request) *sessions.Session {
