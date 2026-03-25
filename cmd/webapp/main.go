@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/lmittmann/tint"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
 	"github.com/tomcz/golang-webapp/internal/webapp/app"
@@ -70,7 +68,6 @@ func (*keygenCmd) Run() error {
 func (a *serviceCmd) Run() error {
 	log := a.setupLogging()
 	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
-
 	sessions, err := webapp.UseSessionCookies(webapp.SessionCookieConfig{
 		CookieName: a.SessionName,
 		AuthKey:    a.SessionAuthKey,
@@ -94,33 +91,39 @@ func (a *serviceCmd) Run() error {
 		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
 		// to prevent connections from taking resources indefinitely.
 	}
+	return a.runServer(server, useTLS, log)
+}
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+func (a *serviceCmd) runServer(server *http.Server, useTLS bool, log *slog.Logger) error {
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	group, ctx := errgroup.WithContext(ctx)
-	group.Go(func() error {
+	var fail error
+	go func() {
+		defer cancel()
 		ll := log.With("addr", a.ListenAddr, "proxy", a.BehindProxy)
 		if useTLS {
 			ll.Info("starting server with TLS")
 			server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
-			return server.ListenAndServeTLS(a.TlsCertFile, a.TlsKeyFile)
+			fail = server.ListenAndServeTLS(a.TlsCertFile, a.TlsKeyFile)
+		} else {
+			ll.Info("starting server without TLS")
+			fail = server.ListenAndServe()
 		}
-		ll.Info("starting server without TLS")
-		return server.ListenAndServe()
-	})
-	group.Go(func() error {
-		<-ctx.Done()
-		log.Info("stopping server")
-		timeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		defer cancel()
-		return server.Shutdown(timeout)
-	})
-	err = group.Wait()
-	if err != nil && errors.Is(err, http.ErrServerClosed) {
-		return nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		// server failed to start
+		return fail
+	case <-sigint:
+		slog.Info("stopping server")
+		wait, stopWaiting := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		err := server.Shutdown(wait)
+		stopWaiting()
+		return err
 	}
-	return err
 }
 
 func (a *serviceCmd) parseKnownUsers() map[string]string {

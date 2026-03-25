@@ -8,7 +8,6 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/lmittmann/tint v1.1.2
-	golang.org/x/sync v0.18.0
 	gotest.tools/v3 v3.5.2
 )
 
