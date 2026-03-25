@@ -67,13 +67,12 @@ func (*keygenCmd) Run() error {
 
 func (a *serviceCmd) Run() error {
 	log := a.setupLogging()
-	useTLS := a.TlsCertFile != "" && a.TlsKeyFile != ""
 	sessions, err := webapp.UseSessionCookies(webapp.SessionCookieConfig{
 		CookieName: a.SessionName,
 		AuthKey:    a.SessionAuthKey,
 		EncKey:     a.SessionEncKey,
 		MaxAge:     a.SessionMaxAge,
-		Secure:     useTLS || a.BehindProxy,
+		Secure:     a.useTLS() || a.BehindProxy,
 	})
 	if err != nil {
 		return err
@@ -91,10 +90,14 @@ func (a *serviceCmd) Run() error {
 		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
 		// to prevent connections from taking resources indefinitely.
 	}
-	return a.runServer(server, useTLS, log)
+	return a.runServer(server, log)
 }
 
-func (a *serviceCmd) runServer(server *http.Server, useTLS bool, log *slog.Logger) error {
+func (a *serviceCmd) useTLS() bool {
+	return a.TlsCertFile != "" && a.TlsKeyFile != ""
+}
+
+func (a *serviceCmd) runServer(server *http.Server, log *slog.Logger) error {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -103,7 +106,7 @@ func (a *serviceCmd) runServer(server *http.Server, useTLS bool, log *slog.Logge
 	go func() {
 		defer cancel()
 		ll := log.With("addr", a.ListenAddr, "proxy", a.BehindProxy)
-		if useTLS {
+		if a.useTLS() {
 			ll.Info("starting server with TLS")
 			server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
 			fail = server.ListenAndServeTLS(a.TlsCertFile, a.TlsKeyFile)
