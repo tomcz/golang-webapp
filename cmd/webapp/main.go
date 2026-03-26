@@ -15,6 +15,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/lmittmann/tint"
+	"github.com/tomcz/gotools/quiet"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
@@ -117,9 +118,8 @@ func (a *serviceCmd) runServer(server *http.Server, log *slog.Logger) error {
 	group.Go(func() error {
 		<-ctx.Done()
 		log.Info("stopping server")
-		timeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		defer cancel()
-		return server.Shutdown(timeout)
+		quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
+		return nil
 	})
 	err := group.Wait()
 	if errors.Is(err, http.ErrServerClosed) {
