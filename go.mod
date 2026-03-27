@@ -3,13 +3,12 @@ module github.com/tomcz/golang-webapp
 go 1.26
 
 require (
-	github.com/alecthomas/kong v1.13.0
+	github.com/alecthomas/kong v1.14.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
-	github.com/lmittmann/tint v1.1.2
-	github.com/tomcz/gotools v0.13.2
-	golang.org/x/sync v0.20.0
+	github.com/lmittmann/tint v1.1.3
+	github.com/tomcz/gotools v0.14.0
 	gotest.tools/v3 v3.5.2
 )
 
@@ -17,4 +16,5 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
+	golang.org/x/sync v0.20.0 // indirect
 )

@@ -1,22 +1,18 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/lmittmann/tint"
-	"github.com/tomcz/gotools/quiet"
-	"golang.org/x/sync/errgroup"
+	"github.com/tomcz/gotools/runner"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"
 	"github.com/tomcz/golang-webapp/internal/webapp/app"
@@ -69,7 +65,7 @@ func (*keygenCmd) Run() error {
 }
 
 func (a *serviceCmd) Run() error {
-	log := a.setupLogging()
+	log := a.setupLogging() // setup first so that failure messages are properly logged
 	sessions, err := webapp.UseSessionCookies(webapp.SessionCookieConfig{
 		CookieName: a.SessionName,
 		AuthKey:    a.SessionAuthKey,
@@ -93,7 +89,10 @@ func (a *serviceCmd) Run() error {
 		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
 		// to prevent connections from taking resources indefinitely.
 	}
-	return a.runServer(server, log)
+	service := runner.New()
+	service.CleanupTimeout(server.Shutdown, 100*time.Millisecond)
+	service.Run(func() error { return a.runServer(server, log) })
+	return service.Wait()
 }
 
 func (a *serviceCmd) useTLS() bool {
@@ -101,27 +100,16 @@ func (a *serviceCmd) useTLS() bool {
 }
 
 func (a *serviceCmd) runServer(server *http.Server, log *slog.Logger) error {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	group, ctx := errgroup.WithContext(ctx)
-	group.Go(func() error {
-		ll := log.With("addr", a.ListenAddr, "proxy", a.BehindProxy)
-		if a.useTLS() {
-			ll.Info("starting server with TLS")
-			server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
-			return server.ListenAndServeTLS(a.TlsCertFile, a.TlsKeyFile)
-		}
+	ll := log.With("addr", a.ListenAddr, "proxy", a.BehindProxy)
+	var err error
+	if a.useTLS() {
+		ll.Info("starting server with TLS")
+		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
+		err = server.ListenAndServeTLS(a.TlsCertFile, a.TlsKeyFile)
+	} else {
 		ll.Info("starting server without TLS")
-		return server.ListenAndServe()
-	})
-	group.Go(func() error {
-		<-ctx.Done()
-		log.Info("stopping server")
-		quiet.CloseWithTimeout(server.Shutdown, 100*time.Millisecond)
-		return nil
-	})
-	err := group.Wait()
+		err = server.ListenAndServe()
+	}
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
