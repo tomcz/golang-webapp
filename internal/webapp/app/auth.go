@@ -1,7 +1,6 @@
 package app
 
 import (
-	"crypto/subtle"
 	"fmt"
 	"net/http"
 	"strings"
@@ -54,7 +53,14 @@ func handleLogin(knownUsers map[string]string) webapp.HandlerWithSession {
 			redirectToLogin(w, r)
 			return
 		}
-		if subtle.ConstantTimeCompare([]byte(password), []byte(expected)) == 0 {
+		match, err := webapp.MatchPassword(expected, password)
+		if err != nil {
+			webapp.RSet(r, "auth_error", fmt.Errorf("MatchPassword for user %q: %w", username, err))
+			s.AddFlashError("Unexpected error. Please contact your administrator.")
+			redirectToLogin(w, r)
+			return
+		}
+		if !match {
 			webapp.RSet(r, "auth_error", fmt.Sprintf("invalid password for user %q", username))
 			s.AddFlashError("Invalid credentials. Please try again.")
 			redirectToLogin(w, r)

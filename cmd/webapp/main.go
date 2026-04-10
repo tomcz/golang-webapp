@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -35,14 +37,17 @@ type serviceCmd struct {
 	BehindProxy    bool              `env:"BEHIND_PROXY" help:"Use HTTP proxy headers."`
 }
 
-type keygenCmd struct{}
-
 type versionCmd struct{}
 
+type keygenCmd struct{}
+
+type passwordCmd struct{}
+
 type appCfg struct {
-	Service serviceCmd `cmd:"" default:"1" help:"Start the webapp."`
-	Version versionCmd `cmd:"" help:"Show build version and exit."`
-	Keygen  keygenCmd  `cmd:"" help:"Generate session keys and exit."`
+	Service  serviceCmd  `cmd:"" default:"1" help:"Start the webapp."`
+	Version  versionCmd  `cmd:"" help:"Show build version and exit."`
+	Keygen   keygenCmd   `cmd:"" help:"Generate session keys and exit."`
+	Password passwordCmd `cmd:"" help:"Create hash for a password."`
 }
 
 func main() {
@@ -66,6 +71,18 @@ func (*versionCmd) Run() error {
 func (*keygenCmd) Run() error {
 	fmt.Printf("export SESSION_AUTH_KEY=%q\n", webapp.NewSessionKey())
 	fmt.Printf("export SESSION_ENC_KEY=%q\n", webapp.NewSessionKey())
+	return nil
+}
+
+func (*passwordCmd) Run() error {
+	fmt.Print("Password to hash: ")
+	reader := bufio.NewReader(os.Stdin)
+	password, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	hashed := webapp.HashPassword(strings.TrimSpace(password))
+	fmt.Println("Hashed password:", hashed)
 	return nil
 }
 

@@ -2,7 +2,7 @@ GITCOMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 LDFLAGS := -s -w -X main.commit=${GITCOMMIT}
 
 .PHONY: all
-all: clean format lint test build-prod
+all: clean tidy format lint test build-prod
 
 .PHONY: clean
 clean:
@@ -46,3 +46,7 @@ run: build-prod
 .PHONY: keygen
 keygen: build-prod
 	./target/webapp keygen
+
+.PHONY: password
+password: build-prod
+	./target/webapp password
