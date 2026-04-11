@@ -81,7 +81,11 @@ func (*passwordCmd) Run() error {
 	if err != nil {
 		return err
 	}
-	hashed := webapp.HashPassword(strings.TrimSpace(password))
+	password = strings.TrimSpace(password)
+	if password == "" {
+		return errors.New("empty password")
+	}
+	hashed := webapp.HashPassword(password)
 	fmt.Println("Hashed password:", hashed)
 	return nil
 }
