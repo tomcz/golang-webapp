@@ -3,6 +3,7 @@ module github.com/tomcz/golang-webapp
 go 1.26
 
 require (
+	codeberg.org/tomcz/reloader v0.1.1
 	github.com/alecthomas/kong v1.14.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1

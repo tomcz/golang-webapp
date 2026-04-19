@@ -11,9 +11,9 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"sync/atomic"
 	"time"
 
+	"codeberg.org/tomcz/reloader"
 	"github.com/alecthomas/kong"
 	"github.com/lmittmann/tint"
 	"github.com/tomcz/gotools/runner"
@@ -155,12 +155,12 @@ func (s *serviceCmd) runServerTLS(ctx context.Context, server *http.Server, log 
 		log.Info("ListenAndServeTLS")
 		return server.ListenAndServeTLS(s.TlsCertFile, s.TlsKeyFile)
 	}
-	reloader, err := s.newCertificateReloader(ctx)
+	loader, err := reloader.New(ctx, s.TlsCertFile, s.TlsKeyFile, s.TlsReload)
 	if err != nil {
 		return err
 	}
 	log.Info("ListenAndServeTLS", "tls_reload", s.TlsReload.String())
-	server.TLSConfig.GetCertificate = reloader.GetCertificate
+	server.TLSConfig.GetCertificate = loader.GetCertificate
 	return server.ListenAndServeTLS("", "")
 }
 
@@ -208,56 +208,4 @@ func highlightErrors(_ []string, attr slog.Attr) slog.Attr {
 		}
 	}
 	return attr
-}
-
-type certificateReloader struct {
-	certFile string
-	keyFile  string
-	value    atomic.Value
-	interval time.Duration
-	log      *slog.Logger
-}
-
-func (s *serviceCmd) newCertificateReloader(ctx context.Context) (*certificateReloader, error) {
-	reloader := &certificateReloader{
-		certFile: s.TlsCertFile,
-		keyFile:  s.TlsKeyFile,
-		interval: s.TlsReload,
-		log:      slog.With("component", "reloader"),
-	}
-	err := reloader.loadCertificate()
-	if err != nil {
-		return nil, fmt.Errorf("loadCertificate: %w", err)
-	}
-	go reloader.reloadCertificate(ctx)
-	return reloader, nil
-}
-
-func (c *certificateReloader) GetCertificate(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return c.value.Load().(*tls.Certificate), nil
-}
-
-func (c *certificateReloader) loadCertificate() error {
-	cert, err := tls.LoadX509KeyPair(c.certFile, c.keyFile)
-	if err != nil {
-		return err
-	}
-	c.log.Debug("loadCertificate successful")
-	c.value.Store(&cert)
-	return nil
-}
-
-func (c *certificateReloader) reloadCertificate(ctx context.Context) {
-	ticker := time.NewTicker(c.interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if err := c.loadCertificate(); err != nil {
-				c.log.Warn("loadCertificate", "err", err)
-			}
-		}
-	}
 }
