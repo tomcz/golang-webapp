@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -30,6 +32,7 @@ type serviceCmd struct {
 	ListenAddr     string            `env:"LISTEN_ADDR" default:"127.0.0.1:3000" help:"Service 'ip:port' listen address."`
 	TlsCertFile    string            `env:"TLS_CERT_FILE" placeholder:"FILE" type:"existingfile" help:"For HTTPS service, optional."`
 	TlsKeyFile     string            `env:"TLS_KEY_FILE" placeholder:"FILE" type:"existingfile" help:"For HTTPS service, optional."`
+	TlsReload      time.Duration     `env:"TLS_RELOAD" help:"Optional interval between TLS file reloads to allow for key rotation"`
 	SessionName    string            `env:"SESSION_NAME" default:"_app_session" help:"Name of session cookie."`
 	SessionMaxAge  time.Duration     `env:"SESSION_MAX_AGE" default:"24h" help:"MaxAge of session cookie."`
 	SessionAuthKey string            `env:"SESSION_AUTH_KEY" help:"Session authentication key."`
@@ -90,56 +93,75 @@ func (*passwordCmd) Run() error {
 	return nil
 }
 
-func (a *serviceCmd) Run() error {
-	log := a.setupLogging() // setup first so that failure messages are properly logged
+func (s *serviceCmd) Run() error {
+	log := s.setupLogging() // setup first so that failure messages are properly logged
+
 	sessions, err := webapp.UseSessionCookies(webapp.SessionCookieConfig{
-		CookieName: a.SessionName,
-		AuthKey:    a.SessionAuthKey,
-		EncKey:     a.SessionEncKey,
-		MaxAge:     a.SessionMaxAge,
-		Secure:     a.useTLS() || a.BehindProxy,
+		CookieName: s.SessionName,
+		AuthKey:    s.SessionAuthKey,
+		EncKey:     s.SessionEncKey,
+		MaxAge:     s.SessionMaxAge,
+		Secure:     s.useTLS() || s.BehindProxy,
 	})
 	if err != nil {
 		return err
 	}
+
 	handler := app.Handler(app.HandlerConfig{
 		Sessions:    sessions,
-		KnownUsers:  a.KnownUsers,
+		KnownUsers:  s.KnownUsers,
 		Commit:      commit,
-		BehindProxy: a.BehindProxy,
+		BehindProxy: s.BehindProxy,
 	})
 	server := &http.Server{
-		Addr:              a.ListenAddr,
+		Addr:              s.ListenAddr,
 		Handler:           handler,
 		ReadHeaderTimeout: time.Minute,
 		// Consider setting ReadTimeout, WriteTimeout, and IdleTimeout
 		// to prevent connections from taking resources indefinitely.
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	service := runner.New()
 	service.CleanupTimeout(server.Shutdown, 100*time.Millisecond)
-	service.Run(func() error { return a.runServer(server, log) })
+	service.Run(func() error { return s.runServer(ctx, server, log) })
 	return service.Wait()
 }
 
-func (a *serviceCmd) useTLS() bool {
-	return a.TlsCertFile != "" && a.TlsKeyFile != ""
+func (s *serviceCmd) useTLS() bool {
+	return s.TlsCertFile != "" && s.TlsKeyFile != ""
 }
 
-func (a *serviceCmd) runServer(server *http.Server, log *slog.Logger) error {
-	ll := log.With("addr", a.ListenAddr, "proxy", a.BehindProxy)
+func (s *serviceCmd) runServer(ctx context.Context, server *http.Server, log *slog.Logger) error {
+	log = log.With("addr", s.ListenAddr, "proxy", s.BehindProxy)
 	var err error
-	if a.useTLS() {
-		ll.Info("starting server with TLS")
-		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
-		err = server.ListenAndServeTLS(a.TlsCertFile, a.TlsKeyFile)
+	if s.useTLS() {
+		err = s.runServerTLS(ctx, server, log)
 	} else {
-		ll.Info("starting server without TLS")
+		log.Info("ListenAndServe")
 		err = server.ListenAndServe()
 	}
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
 	return err
+}
+
+func (s *serviceCmd) runServerTLS(ctx context.Context, server *http.Server, log *slog.Logger) error {
+	server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
+	if s.TlsReload < time.Minute {
+		log.Info("ListenAndServeTLS")
+		return server.ListenAndServeTLS(s.TlsCertFile, s.TlsKeyFile)
+	}
+	reloader, err := s.newCertificateReloader(ctx)
+	if err != nil {
+		return err
+	}
+	log.Info("ListenAndServeTLS", "tls_reload", s.TlsReload.String())
+	server.TLSConfig.GetCertificate = reloader.GetCertificate
+	return server.ListenAndServeTLS("", "")
 }
 
 func levelMapper(c *kong.DecodeContext, target reflect.Value) error {
@@ -157,23 +179,23 @@ func levelMapper(c *kong.DecodeContext, target reflect.Value) error {
 	return nil
 }
 
-func (a *serviceCmd) setupLogging() *slog.Logger {
+func (s *serviceCmd) setupLogging() *slog.Logger {
 	logDefaults := []any{"build", commit}
-	switch a.LogType {
+	switch s.LogType {
 	case "text":
-		opts := &slog.HandlerOptions{Level: a.LogLevel}
+		opts := &slog.HandlerOptions{Level: s.LogLevel}
 		h := slog.NewTextHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
 	case "json":
-		opts := &slog.HandlerOptions{Level: a.LogLevel}
+		opts := &slog.HandlerOptions{Level: s.LogLevel}
 		h := slog.NewJSONHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
 	case "colour":
-		opts := &tint.Options{Level: a.LogLevel, TimeFormat: time.TimeOnly, ReplaceAttr: highlightErrors}
+		opts := &tint.Options{Level: s.LogLevel, TimeFormat: time.TimeOnly, ReplaceAttr: highlightErrors}
 		h := tint.NewHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
 	default:
-		slog.SetLogLoggerLevel(a.LogLevel)
+		slog.SetLogLoggerLevel(s.LogLevel)
 		slog.SetDefault(slog.Default().With(logDefaults...))
 	}
 	return slog.With("component", "main")
@@ -186,4 +208,56 @@ func highlightErrors(_ []string, attr slog.Attr) slog.Attr {
 		}
 	}
 	return attr
+}
+
+type certificateReloader struct {
+	certFile string
+	keyFile  string
+	value    atomic.Value
+	interval time.Duration
+	log      *slog.Logger
+}
+
+func (s *serviceCmd) newCertificateReloader(ctx context.Context) (*certificateReloader, error) {
+	reloader := &certificateReloader{
+		certFile: s.TlsCertFile,
+		keyFile:  s.TlsKeyFile,
+		interval: s.TlsReload,
+		log:      slog.With("component", "reloader"),
+	}
+	err := reloader.loadCertificate()
+	if err != nil {
+		return nil, fmt.Errorf("loadCertificate: %w", err)
+	}
+	go reloader.reloadCertificate(ctx)
+	return reloader, nil
+}
+
+func (c *certificateReloader) GetCertificate(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return c.value.Load().(*tls.Certificate), nil
+}
+
+func (c *certificateReloader) loadCertificate() error {
+	cert, err := tls.LoadX509KeyPair(c.certFile, c.keyFile)
+	if err != nil {
+		return err
+	}
+	c.log.Debug("loadCertificate successful")
+	c.value.Store(&cert)
+	return nil
+}
+
+func (c *certificateReloader) reloadCertificate(ctx context.Context) {
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := c.loadCertificate(); err != nil {
+				c.log.Warn("loadCertificate", "err", err)
+			}
+		}
+	}
 }
