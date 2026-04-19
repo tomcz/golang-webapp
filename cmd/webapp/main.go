@@ -159,6 +159,7 @@ func (s *serviceCmd) runServerTLS(ctx context.Context, server *http.Server, log 
 	if err != nil {
 		return err
 	}
+	loader.SetLogger(slog.With("component", "tls"))
 	log.Info("ListenAndServeTLS", "tls_reload", s.TlsReload.String())
 	server.TLSConfig.GetCertificate = loader.GetCertificate
 	return server.ListenAndServeTLS("", "")
