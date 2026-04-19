@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"codeberg.org/tomcz/reloader"
 	"github.com/alecthomas/kong"
 	"github.com/lmittmann/tint"
+	"github.com/tomcz/gotools/reloader"
 	"github.com/tomcz/gotools/runner"
 
 	"github.com/tomcz/golang-webapp/internal/webapp"

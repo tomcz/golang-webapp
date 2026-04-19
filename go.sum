@@ -1,5 +1,3 @@
-codeberg.org/tomcz/reloader v0.1.1 h1:MDUyPii3YAWJAuKt3K/gpSOhuxdXjjwc6w4lwT1nWTQ=
-codeberg.org/tomcz/reloader v0.1.1/go.mod h1:v5r8EVVJ2JQIGB0tv78+vNid87gYp8sX/JepwR2Mtx0=
 github.com/alecthomas/assert/v2 v2.11.0 h1:2Q9r3ki8+JYXvGsDyBXwH3LcJ+WK5D0gc5E8vS6K3D0=
 github.com/alecthomas/assert/v2 v2.11.0/go.mod h1:Bze95FyfUr7x34QZrjL+XP+0qgp/zg8yS+TtBj1WA3k=
 github.com/alecthomas/kong v1.14.0 h1:gFgEUZWu2ZmZ+UhyZ1bDhuutbKN1nTtJTwh19Wsn21s=
@@ -24,8 +22,8 @@ github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUq
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 github.com/lmittmann/tint v1.1.3 h1:Hv4EaHWXQr+GTFnOU4VKf8UvAtZgn0VuKT+G0wFlO3I=
 github.com/lmittmann/tint v1.1.3/go.mod h1:HIS3gSy7qNwGCj+5oRjAutErFBl4BzdQP6cJZ0NfMwE=
-github.com/tomcz/gotools v0.14.0 h1:ib89/AwANz2MA/V7yIKHahXscn57MNEXOULbkmCW70E=
-github.com/tomcz/gotools v0.14.0/go.mod h1:A/QU0S84CaeqzCitRzGTJtlJzJqxZojOw7DeRTnIpt8=
+github.com/tomcz/gotools v0.17.0 h1:2ClNFCDzuhANyhZgb8fBmDbsehZ4h88PZBVkiO+9IRs=
+github.com/tomcz/gotools v0.17.0/go.mod h1:ZcRt8urSnDbYBeEmCk6Jl6kdBezLjjtg8yT4W8C5UnM=
 golang.org/x/crypto v0.50.0 h1:zO47/JPrL6vsNkINmLoo/PH1gcxpls50DNogFvB5ZGI=
 golang.org/x/crypto v0.50.0/go.mod h1:3muZ7vA7PBCE6xgPX7nkzzjiUq87kRItoJQM1Yo8S+Q=
 golang.org/x/sync v0.20.0 h1:e0PTpb7pjO8GAtTs2dQ6jYa5BWYlMuX047Dco/pItO4=
