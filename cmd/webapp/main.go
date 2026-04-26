@@ -151,8 +151,7 @@ func (s *serviceCmd) runServer(ctx context.Context, server *http.Server, log *sl
 
 func (s *serviceCmd) runServerTLS(ctx context.Context, server *http.Server, log *slog.Logger) error {
 	server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
-	reloadInterval := max(s.TlsReload, time.Hour)
-	loader, err := reloader.New(ctx, s.TlsCertFile, s.TlsKeyFile, reloadInterval)
+	loader, err := reloader.New(ctx, s.TlsCertFile, s.TlsKeyFile, max(s.TlsReload, time.Hour))
 	if err != nil {
 		return err
 	}
