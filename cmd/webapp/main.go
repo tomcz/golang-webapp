@@ -32,7 +32,7 @@ type serviceCmd struct {
 	ListenAddr     string            `env:"LISTEN_ADDR" default:"127.0.0.1:3000" help:"Service 'ip:port' listen address."`
 	TlsCertFile    string            `env:"TLS_CERT_FILE" placeholder:"FILE" type:"existingfile" help:"For HTTPS service, optional."`
 	TlsKeyFile     string            `env:"TLS_KEY_FILE" placeholder:"FILE" type:"existingfile" help:"For HTTPS service, optional."`
-	TlsReload      time.Duration     `env:"TLS_RELOAD" help:"Optional interval between TLS file reloads to allow for key rotation"`
+	TlsReload      time.Duration     `env:"TLS_RELOAD" default:"1h" help:"Interval between TLS file reloads to allow for key rotation"`
 	SessionName    string            `env:"SESSION_NAME" default:"_app_session" help:"Name of session cookie."`
 	SessionMaxAge  time.Duration     `env:"SESSION_MAX_AGE" default:"24h" help:"MaxAge of session cookie."`
 	SessionAuthKey string            `env:"SESSION_AUTH_KEY" help:"Session authentication key."`
@@ -151,11 +151,8 @@ func (s *serviceCmd) runServer(ctx context.Context, server *http.Server, log *sl
 
 func (s *serviceCmd) runServerTLS(ctx context.Context, server *http.Server, log *slog.Logger) error {
 	server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
-	if s.TlsReload < time.Minute {
-		log.Info("ListenAndServeTLS")
-		return server.ListenAndServeTLS(s.TlsCertFile, s.TlsKeyFile)
-	}
-	loader, err := reloader.New(ctx, s.TlsCertFile, s.TlsKeyFile, s.TlsReload)
+	reloadInterval := max(s.TlsReload, time.Hour)
+	loader, err := reloader.New(ctx, s.TlsCertFile, s.TlsKeyFile, reloadInterval)
 	if err != nil {
 		return err
 	}
