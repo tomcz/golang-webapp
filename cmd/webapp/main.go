@@ -138,7 +138,8 @@ func (s *serviceCmd) runServer(ctx context.Context, server *http.Server, log *sl
 	log = log.With("addr", s.ListenAddr, "proxy", s.BehindProxy)
 	var err error
 	if s.useTLS() {
-		err = s.runServerTLS(ctx, server, log)
+		log.Info("ListenAndServeTLS")
+		err = s.runServerTLS(ctx, server)
 	} else {
 		log.Info("ListenAndServe")
 		err = server.ListenAndServe()
@@ -149,15 +150,16 @@ func (s *serviceCmd) runServer(ctx context.Context, server *http.Server, log *sl
 	return err
 }
 
-func (s *serviceCmd) runServerTLS(ctx context.Context, server *http.Server, log *slog.Logger) error {
-	server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS13}
+func (s *serviceCmd) runServerTLS(ctx context.Context, server *http.Server) error {
 	loader, err := reloader.New(ctx, s.TlsCertFile, s.TlsKeyFile, max(s.TlsReload, time.Hour))
 	if err != nil {
 		return err
 	}
 	loader.SetLogger(slog.With("component", "tls"))
-	log.Info("ListenAndServeTLS", "tls_reload", s.TlsReload.String())
-	server.TLSConfig.GetCertificate = loader.GetCertificate
+	server.TLSConfig = &tls.Config{
+		MinVersion:     tls.VersionTLS13,
+		GetCertificate: loader.GetCertificate,
+	}
 	return server.ListenAndServeTLS("", "")
 }
 
