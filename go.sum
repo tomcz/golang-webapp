@@ -22,8 +22,8 @@ github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUq
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 github.com/lmittmann/tint v1.1.3 h1:Hv4EaHWXQr+GTFnOU4VKf8UvAtZgn0VuKT+G0wFlO3I=
 github.com/lmittmann/tint v1.1.3/go.mod h1:HIS3gSy7qNwGCj+5oRjAutErFBl4BzdQP6cJZ0NfMwE=
-github.com/tomcz/gotools v0.17.0 h1:2ClNFCDzuhANyhZgb8fBmDbsehZ4h88PZBVkiO+9IRs=
-github.com/tomcz/gotools v0.17.0/go.mod h1:ZcRt8urSnDbYBeEmCk6Jl6kdBezLjjtg8yT4W8C5UnM=
+github.com/tomcz/gotools v0.18.0 h1:TzYrItqzSZFlD4SUilkzzoHBuXG8G4YnR+c8NJLgBFY=
+github.com/tomcz/gotools v0.18.0/go.mod h1:ZcRt8urSnDbYBeEmCk6Jl6kdBezLjjtg8yT4W8C5UnM=
 golang.org/x/crypto v0.50.0 h1:zO47/JPrL6vsNkINmLoo/PH1gcxpls50DNogFvB5ZGI=
 golang.org/x/crypto v0.50.0/go.mod h1:3muZ7vA7PBCE6xgPX7nkzzjiUq87kRItoJQM1Yo8S+Q=
 golang.org/x/sync v0.20.0 h1:e0PTpb7pjO8GAtTs2dQ6jYa5BWYlMuX047Dco/pItO4=

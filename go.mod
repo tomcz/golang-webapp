@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/lmittmann/tint v1.1.3
-	github.com/tomcz/gotools v0.17.0
+	github.com/tomcz/gotools v0.18.0
 	golang.org/x/crypto v0.50.0
 	gotest.tools/v3 v3.5.2
 )
