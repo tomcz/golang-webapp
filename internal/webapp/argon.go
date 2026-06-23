@@ -18,21 +18,24 @@ func HashPassword(password string) string {
 	salt := make([]byte, 16)
 	_, _ = rand.Read(salt)
 	hash := hashPassword([]byte(password), salt)
-	return hashEncoding.EncodeToString(salt) + "." + hashEncoding.EncodeToString(hash)
+	return "1$" + hashEncoding.EncodeToString(salt) + "$" + hashEncoding.EncodeToString(hash)
 }
 
 // MatchPassword returns true if the password matches the hashed password.
 // The hashed password is expected to be the output of [HashPassword].
 func MatchPassword(hashedPassword, password string) (bool, error) {
-	before, after, found := strings.Cut(hashedPassword, ".")
-	if !found {
-		return false, errors.New("invalid hashed password")
+	parts := strings.Split(hashedPassword, "$")
+	if len(parts) != 3 {
+		return false, errors.New("invalid number of parts")
 	}
-	salt, err := hashEncoding.DecodeString(before)
+	if parts[0] != "1" {
+		return false, fmt.Errorf("invalid version part: %q", parts[0])
+	}
+	salt, err := hashEncoding.DecodeString(parts[1])
 	if err != nil {
 		return false, fmt.Errorf("invalid salt part: %w", err)
 	}
-	expectedHash, err := hashEncoding.DecodeString(after)
+	expectedHash, err := hashEncoding.DecodeString(parts[2])
 	if err != nil {
 		return false, fmt.Errorf("invalid hash part: %w", err)
 	}
