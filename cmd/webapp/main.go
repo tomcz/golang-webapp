@@ -189,7 +189,7 @@ func (s *serviceCmd) setupLogging() *slog.Logger {
 		slog.SetDefault(slog.New(h).With(logDefaults...))
 	case "colour":
 		opts := &tint.Options{Level: s.LogLevel, TimeFormat: time.TimeOnly, ReplaceAttr: highlightErrors}
-		h := tint.NewHandler(os.Stderr, opts)
+		h := tint.NewTextHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
 	default:
 		slog.SetLogLoggerLevel(s.LogLevel)
