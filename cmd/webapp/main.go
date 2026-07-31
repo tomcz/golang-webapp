@@ -53,12 +53,11 @@ type appCfg struct {
 }
 
 func main() {
-	opts := []kong.Option{
+	cfg := kong.Parse(&appCfg{},
 		kong.Description("Example golang webapp."),
 		kong.NamedMapper("level", kong.MapperFunc(levelMapper)),
 		kong.HelpOptions{Compact: true},
-	}
-	cfg := kong.Parse(&appCfg{}, opts...)
+	)
 	if err := cfg.Run(); err != nil {
 		slog.Error("application failed", "error", err)
 		os.Exit(1)
