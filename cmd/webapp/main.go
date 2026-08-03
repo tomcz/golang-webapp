@@ -39,7 +39,7 @@ type serviceCmd struct {
 	BehindProxy    bool              `env:"BEHIND_PROXY" help:"Use HTTP proxy headers."`
 }
 
-type versionCmd struct{}
+type versionFlag bool
 
 type keygenCmd struct{}
 
@@ -47,9 +47,9 @@ type passwordCmd struct{}
 
 type appCfg struct {
 	Service  serviceCmd  `cmd:"" default:"1" help:"Start the webapp."`
-	Version  versionCmd  `cmd:"" help:"Show build version and exit."`
 	Keygen   keygenCmd   `cmd:"" help:"Generate session keys and exit."`
 	Password passwordCmd `cmd:"" help:"Create hash for a password."`
+	Version  versionFlag `short:"v" help:"Show version and exit."`
 }
 
 func main() {
@@ -64,8 +64,11 @@ func main() {
 	}
 }
 
-func (*versionCmd) Run() error {
+func (v versionFlag) IgnoreDefault() {}
+
+func (v versionFlag) BeforeReset(c *kong.Context) error {
 	fmt.Println(commit)
+	c.Exit(0)
 	return nil
 }
 
