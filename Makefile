@@ -29,7 +29,7 @@ test:
 
 .PHONY: build-dev
 build-dev: target
-	go build -tags dev -ldflags "${LDFLAGS}" -o target ./cmd/...
+	go build -ldflags "${LDFLAGS}" -o target ./cmd/...
 
 .PHONY: build-prod
 build-prod: target
