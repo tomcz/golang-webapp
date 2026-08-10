@@ -28,7 +28,7 @@ var commit string
 type serviceCmd struct {
 	KnownUsers     map[string]string `env:"KNOWN_USERS" help:"Where KEY is the username and VALUE is the hashed password."`
 	LogLevel       slog.Level        `env:"LOG_LEVEL" type:"level" help:"Logging level (debug, info, warn, error)."`
-	LogType        string            `env:"LOG_TYPE" default:"colour" enum:"default,colour,text,json" help:"Logger type (default, colour, text, json)."`
+	LogFormat      string            `env:"LOG_FORMAT" default:"colour" enum:"plain,colour,keyval,json" help:"Logger type (plain, colour, keyval, json)."`
 	ListenAddr     string            `env:"LISTEN_ADDR" default:"127.0.0.1:3000" help:"Service 'ip:port' listen address."`
 	TlsCertFile    string            `env:"TLS_CERT_FILE" placeholder:"FILE" type:"existingfile" help:"For HTTPS service, optional."`
 	TlsKeyFile     string            `env:"TLS_KEY_FILE" placeholder:"FILE" type:"existingfile" help:"For HTTPS service, optional."`
@@ -180,8 +180,8 @@ func levelMapper(c *kong.DecodeContext, target reflect.Value) error {
 
 func (s *serviceCmd) setupLogging() *slog.Logger {
 	logDefaults := []any{"build", commit}
-	switch s.LogType {
-	case "text":
+	switch s.LogFormat {
+	case "keyval":
 		opts := &slog.HandlerOptions{Level: s.LogLevel}
 		h := slog.NewTextHandler(os.Stderr, opts)
 		slog.SetDefault(slog.New(h).With(logDefaults...))
