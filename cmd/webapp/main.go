@@ -179,23 +179,23 @@ func levelMapper(c *kong.DecodeContext, target reflect.Value) error {
 }
 
 func (s *serviceCmd) setupLogging() *slog.Logger {
-	logDefaults := []any{"build", commit}
+	var handler slog.Handler
 	switch s.LogFormat {
 	case "keyval":
 		opts := &slog.HandlerOptions{Level: s.LogLevel}
-		h := slog.NewTextHandler(os.Stderr, opts)
-		slog.SetDefault(slog.New(h).With(logDefaults...))
+		handler = slog.NewTextHandler(os.Stderr, opts)
 	case "json":
 		opts := &slog.HandlerOptions{Level: s.LogLevel}
-		h := slog.NewJSONHandler(os.Stderr, opts)
-		slog.SetDefault(slog.New(h).With(logDefaults...))
+		handler = slog.NewJSONHandler(os.Stderr, opts)
 	case "colour":
 		opts := &tint.Options{Level: s.LogLevel, TimeFormat: time.TimeOnly, ReplaceAttr: highlightErrors}
-		h := tint.NewTextHandler(os.Stderr, opts)
-		slog.SetDefault(slog.New(h).With(logDefaults...))
-	default:
+		handler = tint.NewTextHandler(os.Stderr, opts)
+	}
+	if handler != nil {
+		slog.SetDefault(slog.New(handler).With("build", commit))
+	} else {
 		slog.SetLogLoggerLevel(s.LogLevel)
-		slog.SetDefault(slog.Default().With(logDefaults...))
+		slog.SetDefault(slog.Default().With("build", commit))
 	}
 	return slog.With("component", "main")
 }
