@@ -3,13 +3,13 @@ module github.com/tomcz/golang-webapp
 go 1.26
 
 require (
-	github.com/alecthomas/kong v1.16.0
+	github.com/alecthomas/kong v1.16.1
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/lmittmann/tint v1.2.0
-	github.com/tomcz/gotools v0.19.3
-	golang.org/x/crypto v0.54.0
+	github.com/tomcz/gotools v0.19.4
+	golang.org/x/crypto v0.55.0
 	gotest.tools/v3 v3.5.2
 )
 
