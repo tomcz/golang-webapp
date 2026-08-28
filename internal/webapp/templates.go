@@ -5,6 +5,7 @@ import (
 	"maps"
 	"net/http"
 
+	"github.com/tomcz/gotools/buffers"
 	"github.com/tomcz/gotools/html"
 
 	"github.com/tomcz/golang-webapp/templates"
@@ -12,6 +13,7 @@ import (
 
 //goland:noinspection GoBoolExpressions
 var tmpl = html.New(templates.FS, templates.Embedded)
+var pool = buffers.New()
 
 type renderCfg struct {
 	layoutFile   string
@@ -81,8 +83,8 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 		return // error response rendered
 	}
 
-	buf := BufBorrow()
-	defer BufReturn(buf)
+	buf := pool.Borrow()
+	defer pool.Return(buf)
 
 	err := tmpl.Render(buf, templateFile, data, html.WithLayoutFile(cfg.layoutFile), html.WithTemplateName(cfg.templateName))
 	if err != nil {
