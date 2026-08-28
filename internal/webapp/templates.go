@@ -5,7 +5,7 @@ import (
 	"maps"
 	"net/http"
 
-	"github.com/tomcz/gotools/buffers"
+	"github.com/tomcz/gotools/bufpool"
 	"github.com/tomcz/gotools/html"
 
 	"github.com/tomcz/golang-webapp/templates"
@@ -13,7 +13,7 @@ import (
 
 //goland:noinspection GoBoolExpressions
 var tmpl = html.New(templates.FS, templates.Embedded)
-var pool = buffers.New()
+var pool = bufpool.New()
 
 type renderCfg struct {
 	layoutFile   string
