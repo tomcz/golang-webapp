@@ -1,6 +1,6 @@
 {{- define "head" }}
   <meta name="htmx-config" content='{"responseHandling": [{"code":".*", "swap": true}]}'>
-  <script src="/static/{{ .Commit }}/htmx.min.js"></script>
+  <script src="{{ .Static }}htmx.min.js"></script>
 {{- end }}
 {{- define "body" }}
   <main class="container" hx-on::send-error="window.location.reload()">

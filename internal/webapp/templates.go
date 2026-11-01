@@ -77,7 +77,7 @@ func Render(w http.ResponseWriter, r *http.Request, templateFile string, data ma
 	maps.Copy(data, getSessionData(r))
 	// Old-school cache-busting technique: add commit info so that we can use versioned
 	// static paths to prevent browsers from using old assets with new deployments.
-	data["Commit"] = r.Context().Value(currentCommitKey)
+	data["Static"] = staticPath(r.Context().Value(currentCommitKey).(string))
 
 	if !saveSession(w, r) {
 		return // error response rendered

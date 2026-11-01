@@ -12,9 +12,13 @@ import (
 func registerStaticAssetRoutes(router *mux.Router, commit string) {
 	// Old-school cache-busting technique: add commit info so that we can use versioned
 	// static paths to prevent browsers from using old assets with new deployments.
-	prefix := fmt.Sprintf("/static/%s/", commit)
+	prefix := staticPath(commit)
 	h := http.StripPrefix(prefix, http.FileServer(static.FS))
-	router.PathPrefix("/static/").Handler(withStaticCacheControl(h)).Name("static")
+	router.PathPrefix(prefix).Handler(withStaticCacheControl(h)).Name("static")
+}
+
+func staticPath(commit string) string {
+	return fmt.Sprintf("/static/%s/", commit)
 }
 
 func withStaticCacheControl(next http.Handler) http.Handler {
