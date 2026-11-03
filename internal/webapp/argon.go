@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base32"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -26,7 +25,7 @@ func HashPassword(password string) string {
 func MatchPassword(hashedPassword, password string) (bool, error) {
 	parts := strings.Split(hashedPassword, "$")
 	if len(parts) != 3 {
-		return false, errors.New("invalid number of parts")
+		return false, fmt.Errorf("invalid number of parts: %d", len(parts))
 	}
 	if parts[0] != "1" {
 		return false, fmt.Errorf("invalid version part: %q", parts[0])
