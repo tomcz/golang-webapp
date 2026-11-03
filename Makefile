@@ -4,6 +4,9 @@ LDFLAGS := -s -w -X main.commit=${GITCOMMIT}
 .PHONY: all
 all: clean tidy format lint test build-prod
 
+.PHONY: ci
+ci: clean download lint test build-prod
+
 .PHONY: clean
 clean:
 	rm -rf target
@@ -17,11 +20,15 @@ format:
 
 .PHONY: lint
 lint:
-	golangci-lint run --timeout 10m
+	golangci-lint run
 
 .PHONY: tidy
 tidy:
 	go mod tidy
+
+.PHONY: download
+download:
+	go mod download
 
 .PHONY: test
 test:
@@ -29,11 +36,11 @@ test:
 
 .PHONY: build-dev
 build-dev: target
-	go build -ldflags "${LDFLAGS}" -o target ./cmd/...
+	go build -tags dev -ldflags "${LDFLAGS}" -o target ./cmd/...
 
 .PHONY: build-prod
 build-prod: target
-	go build -tags prod -ldflags "${LDFLAGS}" -o target ./cmd...
+	go build -ldflags "${LDFLAGS}" -o target ./cmd...
 
 .PHONY: dev
 dev: build-dev
