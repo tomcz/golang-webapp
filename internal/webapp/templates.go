@@ -11,7 +11,6 @@ import (
 	"github.com/tomcz/golang-webapp/templates"
 )
 
-//goland:noinspection GoBoolExpressions
 var tmpl = html.New(templates.FS, templates.Embedded)
 var pool = bufpool.New()
 
