@@ -2,12 +2,10 @@ package webapp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -53,13 +51,14 @@ func (r *Router) HandleSession(path, name string, handler HandlerWithSession) *m
 }
 
 func (r *Router) Handler() http.Handler {
+	protection := http.NewCrossOriginProtection()
 	r.router.Use(
 		withPanicRecovery,
 		withCommit(r.commit),
 		withRouter(r.router),
 		withHandlerName,
 		withSecurityHeaders,
-		withCsrfProtection,
+		protection.Handler,
 	)
 	handler := handlers.CustomLoggingHandler(io.Discard, r.router, logFormatter)
 	if r.behindProxy {
@@ -210,51 +209,4 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 		header.Set("Referrer-Policy", "no-referrer")
 		next.ServeHTTP(w, r)
 	})
-}
-
-func withCsrfProtection(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := csrfCheck(r); err != nil {
-			HttpError(w, r, http.StatusBadRequest, "CSRF validation failed", err)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-var csrfSafeMethods = map[string]bool{
-	http.MethodGet:     true,
-	http.MethodHead:    true,
-	http.MethodOptions: true,
-}
-
-var csrfSafeFetches = map[string]bool{
-	"same-origin": true,
-	"none":        true,
-}
-
-// adapted from https://github.com/golang/go/issues/73626
-func csrfCheck(r *http.Request) error {
-	if csrfSafeMethods[r.Method] {
-		return nil
-	}
-	secFetchSite := r.Header.Get("Sec-Fetch-Site")
-	if csrfSafeFetches[secFetchSite] {
-		return nil
-	}
-	origin := r.Header.Get("Origin")
-	if secFetchSite == "" {
-		if origin == "" {
-			// we could also fail open here and allow requests from curl, etc.
-			return errors.New("not a browser request")
-		}
-		parsed, err := url.Parse(origin)
-		if err != nil {
-			return fmt.Errorf("bad origin: %w", err)
-		}
-		if parsed.Host == r.Host {
-			return nil
-		}
-	}
-	return fmt.Errorf("Sec-Fetch-Site %q, Origin %q, Host %q", secFetchSite, origin, r.Host)
 }
