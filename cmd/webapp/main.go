@@ -123,7 +123,7 @@ func (s *serviceCmd) Run() error {
 	defer cancel()
 
 	service := runner.New()
-	service.CleanupTimeout(server.Shutdown, 100*time.Millisecond)
+	service.ShutdownTimeout(server.Shutdown, 100*time.Millisecond)
 	service.Run(func() error { return s.runServer(ctx, server, log) })
 	return service.Wait()
 }
