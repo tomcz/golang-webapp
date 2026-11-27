@@ -4,8 +4,6 @@ github.com/alecthomas/kong v1.17.0 h1:f52BVWChYMDkMkCoqkEWRuFOk/K4B5LO7xIijeLJRd
 github.com/alecthomas/kong v1.17.0/go.mod h1:wrlbXem1CWqUV5Vbmss5ISYhsVPkBb1Yo7YKJghju2I=
 github.com/alecthomas/repr v0.5.2 h1:SU73FTI9D1P5UNtvseffFSGmdNci/O6RsqzeXJtP0Qs=
 github.com/alecthomas/repr v0.5.2/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
-github.com/andybalholm/cascadia v1.3.4 h1:vM2lgh0Vru9Vwyfm4cQqWP2HHMW0u0+2PAW7Q38Qufg=
-github.com/andybalholm/cascadia v1.3.4/go.mod h1:BLRmbRjpEtNKieZOCCvYj4RqN+KRA41GBe/5O+G93kM=
 github.com/felixge/httpsnoop v1.1.0 h1:3YtUj32ZZkqZtt3sZZsClsymw/QDuVfpNhoA31zeORc=
 github.com/felixge/httpsnoop v1.1.0/go.mod h1:Zqxgdd+1Rkcz8euOqdr7lqgCRJztwr5hp9vDSi5UZCE=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
@@ -24,12 +22,10 @@ github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUq
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 github.com/lmittmann/tint v1.2.1 h1:zOadah+f+nSm3jZM044jOsqh0+vSfgG/d9Ota9a/TLE=
 github.com/lmittmann/tint v1.2.1/go.mod h1:HIS3gSy7qNwGCj+5oRjAutErFBl4BzdQP6cJZ0NfMwE=
-github.com/tomcz/gotools v0.21.2 h1:AylgRwboFjylVlwsNSxkdZ1lmfiJ2m9uXahC/iFgHUA=
-github.com/tomcz/gotools v0.21.2/go.mod h1:Z5aeZ/bsUGEf2XBxiXdXgrzmzB3ICiXvCfHGscjp5tw=
+github.com/tomcz/gotools v0.21.3 h1:N48ucZbA9CpGONW2IP02dHjyupVIz0eoWniHQg/YqRA=
+github.com/tomcz/gotools v0.21.3/go.mod h1:7cZ2d5NyxLLUa2bL6a8kBaymB5Rw1jiWOKYDPugHyNo=
 golang.org/x/crypto v0.59.0 h1:xS2jhqYbzNrpvkWP2YTDf4TJwBy3ykR03i8vFDxEc7c=
 golang.org/x/crypto v0.59.0/go.mod h1:veDyUwATGs3c+vN3VfTbzViMGXeTBk3WyhBOkn+F/4U=
-golang.org/x/net v0.62.0 h1:18ELalfM5+XNRwzM2nYqXsZQ9ByS1uhj2O/U7+5jqRY=
-golang.org/x/net v0.62.0/go.mod h1:WgDCOTH8iwtB66T4/GfI94AHo/hhdb7Hah9NDseQfiI=
 golang.org/x/sync v0.25.0 h1:dJnifr0nMV8/SBnBvdo4eSGGnrc3O4FFx6IqvtLcmRs=
 golang.org/x/sync v0.25.0/go.mod h1:sUUOizhqBxiL6pEWpqNLUiaJn1ShEbZ6BBqskPbjZm0=
 golang.org/x/sys v0.50.0 h1:dkKZEFTEKaLr1sjhs0WiKqoi8Jj5nHbS3Njmx1UoMJs=
